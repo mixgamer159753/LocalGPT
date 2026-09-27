@@ -72,15 +72,15 @@ export default function ChatWindow({ messages, loading, onSend, markdownRich = t
     return (
       <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-10">
         <div className="w-full max-w-lg animate-message-in">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[#315b49] text-white shadow-lg shadow-emerald-900/10 dark:bg-[#b5d9c1] dark:text-[#193c2d]">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[#e58e74] text-[#271914] shadow-lg shadow-[#e58e74]/10">
             <BrainCircuit size={29} strokeWidth={1.7} />
           </div>
           <div className="mt-7 text-center">
-            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#dce6dc] bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#53745e] dark:border-slate-700 dark:bg-slate-900/70 dark:text-[#b5d9c1]">
+            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-[#e58e74]/25 bg-[#e58e74]/[0.08] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f0a087]">
               <ShieldCheck size={13} /> Private by design
             </div>
-            <h2 className="text-3xl font-semibold tracking-[-0.04em] text-[#1d2b23] dark:text-white sm:text-4xl">
-              A little space to think.
+            <h2 className="font-serif text-3xl font-medium tracking-[-0.035em] text-[#f1eee9] sm:text-4xl">
+              Good to see you here.
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
               Ask a question, explore an idea, or get help with the work in front of you.
@@ -93,10 +93,10 @@ export default function ChatWindow({ messages, loading, onSend, markdownRich = t
                 type="button"
                 onClick={() => onSend?.(hint)}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className="group animate-message-in flex min-h-[4.25rem] items-center justify-between gap-3 rounded-2xl border border-[#e0e6df] bg-white/75 px-4 py-3.5 text-left text-sm font-medium text-slate-700 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#b7cdb9] hover:bg-white hover:text-[#203d2d] hover:shadow-md dark:border-slate-800 dark:bg-slate-900/75 dark:text-slate-300 dark:hover:border-[#456c53] dark:hover:bg-slate-900 dark:hover:text-white"
+                className="group animate-message-in flex min-h-[4.25rem] items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[#191e24]/90 px-4 py-3.5 text-left text-sm font-medium text-slate-300 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#e58e74]/55 hover:bg-[#20262e] hover:text-white hover:shadow-lg hover:shadow-black/20"
               >
                 <span>{hint}</span>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#eff3ed] text-[#53745e] transition group-hover:bg-[#315b49] group-hover:text-white dark:bg-slate-800 dark:text-[#b5d9c1] dark:group-hover:bg-[#b5d9c1] dark:group-hover:text-[#193c2d]">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2a2524] text-[#e58e74] transition group-hover:bg-[#e58e74] group-hover:text-[#271914]">
                   <ArrowRight size={14} />
                 </span>
               </button>

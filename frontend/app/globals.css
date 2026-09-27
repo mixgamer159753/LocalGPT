@@ -1,30 +1,17 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  color-scheme: light;
-  --background: #f5f6f2;
-  --foreground: #17231f;
-  --surface: #fffefa;
-  --surface-muted: #edf1ec;
-  --border: #dfe5df;
-  --muted: #68766f;
-  --accent: #2e6c58;
-  --accent-strong: #205542;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --background: #101713;
-    --foreground: #e9eee8;
-    --surface: #171f1a;
-    --surface-muted: #202b24;
-    --border: #2b3930;
-    --muted: #9aa99d;
-    --accent: #79b99b;
-    --accent-strong: #9bd4b7;
-  }
+  color-scheme: dark;
+  --background: #111418;
+  --foreground: #f1eee9;
+  --surface: #191e24;
+  --surface-muted: #20262e;
+  --border: #303943;
+  --muted: #a7a39d;
+  --accent: #e58e74;
+  --accent-strong: #ffb297;
 }
 
 @theme inline {
@@ -45,18 +32,10 @@ body {
 
 body {
   background:
-    radial-gradient(ellipse at 50% -28%, rgba(91, 143, 112, 0.10), transparent 52%),
+    radial-gradient(ellipse at 50% -28%, rgba(229, 142, 116, 0.075), transparent 52%),
     var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background:
-      radial-gradient(ellipse at 50% -28%, rgba(89, 155, 119, 0.12), transparent 52%),
-      var(--background);
-  }
 }
 
 button,
@@ -190,8 +169,8 @@ input:focus-visible {
   --tw-prose-quotes: var(--muted);
   --tw-prose-quote-borders: var(--accent);
   --tw-prose-code: var(--accent-strong);
-  --tw-prose-pre-code: #e5edf6;
-  --tw-prose-pre-bg: #0b0f14;
+  --tw-prose-pre-code: #f1eee9;
+  --tw-prose-pre-bg: #111418;
   --tw-prose-th-borders: var(--border);
   --tw-prose-td-borders: var(--border);
 }

@@ -129,7 +129,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
       if (isInline) {
         return (
           <code
-            className="rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-teal-800 dark:border-slate-800 dark:bg-slate-950 dark:text-teal-200"
+            className="rounded-md border border-slate-700 bg-slate-900 px-1.5 py-0.5 font-mono text-[0.85em] text-[#ffb297]"
             {...props}
           >
             {children}
@@ -197,7 +197,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
           href={safeHref}
           target={external ? "_blank" : undefined}
           rel={external ? "noopener noreferrer" : undefined}
-          className="inline-flex items-center gap-1 rounded-md text-teal-700 underline decoration-teal-500/30 underline-offset-4 transition hover:text-teal-900 hover:decoration-teal-600 dark:text-teal-300 dark:hover:text-teal-100"
+          className="inline-flex items-center gap-1 rounded-md text-[#f0a087] underline decoration-[#e58e74]/40 underline-offset-4 transition hover:text-[#ffc1aa] hover:decoration-[#ffc1aa]"
         >
           {children}
           {external ? <ExternalLink size={12} /> : null}
@@ -254,7 +254,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
     },
     blockquote({ children }) {
       return (
-        <blockquote className="my-4 rounded-lg border border-teal-200 bg-teal-50/70 px-4 py-3 text-slate-700 dark:border-teal-400/20 dark:bg-teal-400/10 dark:text-slate-200">
+        <blockquote className="my-4 rounded-lg border border-[#e58e74]/25 bg-[#e58e74]/[0.07] px-4 py-3 text-slate-200">
           {children}
         </blockquote>
       );
@@ -273,8 +273,8 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full ${
               isUser
-                ? "bg-[#dce9df] text-[#315944] dark:bg-[#2d3d32] dark:text-[#b8ddc5]"
-                : "bg-[#315b49] text-white dark:bg-[#b5d9c1] dark:text-[#193c2d]"
+                ? "bg-[#3a2925] text-[#ffc1aa]"
+                : "bg-[#e58e74] text-[#271914]"
             }`}
           >
             {isUser ? <User size={16} /> : <Bot size={17} />}
@@ -285,12 +285,12 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
           <div
             className={`rounded-2xl px-4 py-3 ${
               isUser
-                ? "rounded-tr-md bg-[#e6efe6] text-[#1d3326] dark:bg-[#26372c] dark:text-[#e3eee5]"
+                ? "rounded-tr-md bg-[#2a2221] text-[#f4ece8]"
                 : isError
                   ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
                   : isStopped
                     ? "border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100"
-                  : "bg-white/80 text-slate-800 dark:bg-[#171f1a]/80 dark:text-slate-100"
+                  : "bg-[#191e24]/90 text-slate-100"
             }`}
           >
             {isUser ? (
@@ -330,7 +330,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
           </div>
 
           <div className={`mt-1.5 flex items-center gap-2 px-1 ${isUser ? "justify-end" : ""}`}>
-            {time ? <span className="text-xs text-slate-400 dark:text-slate-600">{time}</span> : null}
+            {time ? <span className="text-xs text-slate-500">{time}</span> : null}
             {message.content ? (
               <button
                 type="button"

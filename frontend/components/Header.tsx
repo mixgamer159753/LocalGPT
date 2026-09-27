@@ -127,7 +127,7 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 md:hidden dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-white md:hidden"
             aria-label="Toggle sidebar"
           >
             <Menu size={18} />
@@ -154,11 +154,11 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
               type="button"
               onClick={() => setDropdownOpen((open) => !open)}
               disabled={disabled}
-              className="flex h-10 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-[var(--border)] bg-white/80 px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#b7cdb9] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[22rem] dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#456c53]"
+              className="flex h-10 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-[var(--border)] bg-[#1b2026] px-3 text-xs font-medium text-slate-200 shadow-sm transition hover:border-[#e58e74]/70 hover:bg-[#20262e] disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[22rem]"
               aria-expanded={dropdownOpen}
               aria-haspopup="listbox"
             >
-              <Cpu size={14} className="text-[#315b49] dark:text-[#b5d9c1]" />
+              <Cpu size={14} className="text-[#e58e74]" />
               <span className="min-w-0 truncate sm:max-w-[19rem]" title={model}>
                 {current.family}{current.version ? `:${current.version}` : ""}
               </span>
@@ -166,8 +166,8 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
             </button>
 
             {dropdownOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl shadow-slate-950/12 dark:border-slate-800 dark:bg-slate-950">
-                <div className="border-b border-slate-100 p-3 dark:border-slate-800">
+              <div className="absolute right-0 top-full z-50 mt-2 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[var(--border)] bg-[#171c22] shadow-2xl shadow-black/35">
+                <div className="border-b border-[var(--border)] p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">Local models</p>
@@ -190,7 +190,7 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                       placeholder="Search installed models"
-                      className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                      className="h-9 w-full rounded-lg border border-[var(--border)] bg-[#111418] pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-[#e58e74] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -222,13 +222,13 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
                           }}
                           className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition ${
                             isActive
-                              ? "bg-teal-50 text-teal-900 dark:bg-teal-400/10 dark:text-teal-100"
-                              : "text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
+                              ? "bg-[#e58e74]/10 text-[#ffd0c1]"
+                              : "text-slate-300 hover:bg-slate-800/70"
                           }`}
                           role="option"
                           aria-selected={isActive}
                         >
-                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-slate-400">
                             <Cpu size={15} />
                           </span>
                           <span className="min-w-0 flex-1">
@@ -236,12 +236,12 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
                               {name.family}{name.version ? `:${name.version}` : ""}
                             </span>
                             {modelMeta(candidate) ? (
-                              <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-slate-600">
+                              <span className="mt-0.5 block truncate text-[11px] text-slate-400">
                                 {modelMeta(candidate)}
                               </span>
                             ) : null}
                           </span>
-                          {isActive ? <Check size={16} className="text-teal-600 dark:text-teal-300" /> : null}
+                          {isActive ? <Check size={16} className="text-[#e58e74]" /> : null}
                         </button>
                       );
                     })}

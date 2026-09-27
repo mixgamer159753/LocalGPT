@@ -82,15 +82,15 @@ export default function Sidebar({
     <aside
       aria-label="Chat history"
       className={`
-        fixed z-40 flex h-full w-[18rem] max-w-[88vw] flex-col border-r border-[#dce4dc]
-        bg-[#f0f3ee] shadow-2xl shadow-slate-950/10 transition duration-200
-        dark:border-slate-800 dark:bg-[#141c17] md:relative md:translate-x-0 md:shadow-none
+        fixed z-40 flex h-full w-[18rem] max-w-[88vw] flex-col border-r border-[var(--border)]
+        bg-[#151a20] shadow-2xl shadow-black/25 transition duration-200
+        md:relative md:translate-x-0 md:shadow-none
         ${open ? "translate-x-0" : "-translate-x-full"}
       `}
     >
-      <div className="border-b border-[#dce4dc] p-4 dark:border-slate-800">
+      <div className="border-b border-[var(--border)] p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[0.9rem] bg-[#315b49] text-white shadow-sm dark:bg-[#b5d9c1] dark:text-[#193c2d]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[0.9rem] bg-[#e58e74] text-[#271914] shadow-sm shadow-[#e58e74]/10">
             <Bot size={20} strokeWidth={1.8} />
           </div>
           <div className="min-w-0">
@@ -110,14 +110,14 @@ export default function Sidebar({
         <button
           type="button"
           onClick={onNewChat}
-          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#315b49] text-sm font-semibold text-white shadow-sm transition hover:bg-[#264b39] active:scale-[0.99] dark:bg-[#b5d9c1] dark:text-[#193c2d] dark:hover:bg-[#c9e8d2]"
+          className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e58e74] text-sm font-semibold text-[#271914] shadow-sm shadow-[#e58e74]/10 transition hover:bg-[#f0a087] active:scale-[0.99]"
         >
           <Plus size={16} />
           New chat
         </button>
       </div>
 
-      <div className="border-b border-[#dce4dc] p-3.5 dark:border-slate-800">
+      <div className="border-b border-[var(--border)] p-3.5">
         <div className="relative">
           <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -126,7 +126,7 @@ export default function Sidebar({
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search conversations"
             aria-label="Search conversations"
-            className="h-10 w-full rounded-xl border border-[#dce4dc] bg-white/70 pl-9 pr-9 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-[#71947a] focus:bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-[#71947a]"
+            className="h-10 w-full rounded-xl border border-[var(--border)] bg-[#1b2026] pl-9 pr-9 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-[#e58e74] focus:outline-none"
           />
           {search ? (
             <button
@@ -141,12 +141,12 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="border-b border-[#dce4dc] px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:border-slate-800 dark:text-slate-500">
+      <div className="border-b border-[var(--border)] px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         Conversations <span className="ml-1 font-medium tracking-normal">{conversations.length || ""}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-3">
         {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#cbd8cd] bg-white/35 p-6 text-center dark:border-slate-800 dark:bg-slate-900/30">
+            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[#191e24] p-6 text-center">
             <MessageSquare size={22} className="mx-auto text-slate-400" />
             <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">
               {search ? "No matching chats" : "No conversations yet"}
@@ -167,8 +167,8 @@ export default function Sidebar({
                   key={chat.id}
                   className={`group flex items-center gap-1 rounded-xl px-2 py-1.5 transition ${
                     active
-                      ? "bg-white text-[#214532] shadow-sm ring-1 ring-[#e2e9e1] dark:bg-slate-900 dark:text-[#c5e2ce] dark:ring-slate-800"
-                      : "text-slate-700 hover:bg-white/65 dark:text-slate-300 dark:hover:bg-slate-900"
+                      ? "bg-[#22282f] text-[#ffd0c1] shadow-sm ring-1 ring-[#e58e74]/20"
+                      : "text-slate-300 hover:bg-[#1d232a]"
                   }`}
                 >
                   {editing ? (
@@ -197,16 +197,16 @@ export default function Sidebar({
                       }}
                       autoFocus
                       aria-label={`Rename ${chat.title}`}
-                      className="h-9 min-w-0 flex-1 rounded-lg border border-[#b7cdb9] bg-white px-2 text-sm text-slate-900 outline-none dark:border-[#456c53] dark:bg-slate-950 dark:text-white"
+                      className="h-9 min-w-0 flex-1 rounded-lg border border-[#e58e74]/60 bg-[#111418] px-2 text-sm text-white outline-none"
                     />
                   ) : (
                     <button
                       type="button"
                       onClick={() => onSelect(chat.id)}
                       aria-current={active ? "page" : undefined}
-                      className="flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-[#71947a]"
+                      className="flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-[#e58e74]"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#e5ebe4] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#20262e] text-slate-400">
                         {pinned ? <Pin size={14} /> : <MessageSquare size={14} />}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -254,9 +254,9 @@ export default function Sidebar({
           </div>
         )}
       </div>
-      <div className="border-t border-[#dce4dc] p-4 dark:border-slate-800">
-        <div className="flex items-center gap-2.5 rounded-xl bg-white/55 px-3 py-2.5 dark:bg-slate-900/60">
-          <ShieldCheck size={16} className="shrink-0 text-[#53745e] dark:text-[#b5d9c1]" />
+      <div className="border-t border-[var(--border)] p-4">
+        <div className="flex items-center gap-2.5 rounded-xl bg-[#1b2026] px-3 py-2.5">
+          <ShieldCheck size={16} className="shrink-0 text-[#e58e74]" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-slate-700 dark:text-slate-200">Private by design</p>
             <p className="text-[11px] text-slate-500 dark:text-slate-500">Your model runs locally</p>

@@ -136,7 +136,7 @@ export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
 
         {attachmentNotice ? <p role="status" className="mb-2 text-xs text-amber-800 dark:text-amber-300">{attachmentNotice}</p> : null}
 
-        <div className="flex items-end gap-2 rounded-[1.35rem] border border-[var(--border)] bg-white p-2 shadow-[0_5px_24px_-18px_rgba(20,43,29,0.42)] transition focus-within:border-[#87a78d] focus-within:ring-4 focus-within:ring-[#315b49]/[0.07] dark:bg-[#171f1a]">
+        <div className="flex items-end gap-2 rounded-[1.35rem] border border-[var(--border)] bg-[#191e24] p-2 shadow-[0_8px_32px_-20px_rgba(0,0,0,0.75)] transition focus-within:border-[#e58e74]/80 focus-within:ring-4 focus-within:ring-[#e58e74]/[0.08]">
           <input
             ref={fileInputRef}
             type="file"
@@ -149,7 +149,7 @@ export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || images.length >= MAX_IMAGES}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#eff3ed] hover:text-[#315b49] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-slate-800 dark:hover:text-[#b5d9c1]"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-800 hover:text-[#ffb297] disabled:cursor-not-allowed disabled:opacity-45"
             aria-label="Attach image"
             title={images.length >= MAX_IMAGES ? `Up to ${MAX_IMAGES} images per message` : "Attach images"}
           >
@@ -181,7 +181,7 @@ export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
               type="button"
               onClick={handleSend}
               disabled={!hasContent}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#315b49] text-white transition hover:bg-[#264b39] active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-[#b5d9c1] dark:text-[#193c2d] dark:hover:bg-[#c9e8d2] dark:disabled:bg-slate-800 dark:disabled:text-slate-600"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e58e74] text-[#271914] transition hover:bg-[#f0a087] active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
               aria-label="Send message"
             >
               <Send size={16} />

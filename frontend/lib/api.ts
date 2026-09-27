@@ -4,6 +4,8 @@ import { Conversation, ConversationDetail, HealthInfo, ModelInfo } from "@/types
 const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || "8000";
 
 export function getApiBaseUrl() {
+  // Hosted frontends need a public backend origin (for example, an HTTPS tunnel).
+  // NEXT_PUBLIC_ values are shipped to browsers, so this must never hold a secret.
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
   if (configured) {
     return configured;

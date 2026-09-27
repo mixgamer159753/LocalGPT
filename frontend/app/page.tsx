@@ -103,7 +103,6 @@ export default function Home() {
           onSend={sendMessage}
           onStop={stopGeneration}
           disabled={loading}
-          model={model}
         />
       </section>
 

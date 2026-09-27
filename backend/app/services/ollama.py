@@ -25,14 +25,46 @@ class OllamaService:
     def __init__(self):
         self.model = DEFAULT_MODEL
 
+    def resolve_model(self, requested_model: str | None = None) -> str:
+        """Use the requested model when available, otherwise select a loaded model."""
+        models = self.list_models()
+        if LLM_USE_NATIVE_OLLAMA:
+            names = [item.get("name") or item.get("model") for item in models]
+        else:
+            names = [item.get("id") for item in models]
+
+        available = list(dict.fromkeys(
+            name.strip()
+            for name in names
+            if isinstance(name, str) and name.strip() and name.strip() != "unknown"
+        ))
+        preferred = requested_model or self.model
+        if preferred and preferred in available:
+            return preferred
+        if self.model and self.model in available:
+            return self.model
+        if available:
+            if preferred:
+                logger.warning(
+                    "Model %s is not available; using loaded model %s",
+                    preferred,
+                    available[0],
+                )
+            return available[0]
+        raise OllamaUnavailableError(
+            "No models are available from the provider. Load a model and try again."
+        )
+
     def chat(self, messages: list[dict], model: str | None = None,
              temperature: float | None = None, max_tokens: int | None = None,
              response_style: str = "balanced", memory_context: str = "",
              thinking_effort: str = "max") -> str:
 
+        selected_model = model or self.model or self.resolve_model()
+
         payload = build_chat_payload(
             messages=messages,
-            model=model or self.model,
+            model=selected_model,
             stream=False,
             temperature=temperature,
             max_tokens=max_tokens,

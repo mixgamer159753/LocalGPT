@@ -78,7 +78,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         signal: controller.signal,
         body: JSON.stringify({
           messages: apiMessages.slice(-MAX_HISTORY),
-          model: modelRef.current,
+          model: modelRef.current || undefined,
           temperature: settingsRef.current.temperature,
           max_tokens: settingsRef.current.maxTokens || 16384,
           thinking_effort: settingsRef.current.thinkingEffort,

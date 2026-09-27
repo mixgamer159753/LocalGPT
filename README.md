@@ -59,7 +59,7 @@ Useful environment variables:
 
 ```text
 OLLAMA_HOST=http://localhost:11434
-DEFAULT_MODEL=qwen3:8b
+DEFAULT_MODEL=
 DATABASE_URL=sqlite+aiosqlite:///./localgpt.db
 CORS_ORIGINS=http://localhost:3000
 BACKEND_HOST=127.0.0.1
@@ -94,10 +94,8 @@ messages, or disable web research in the frontend settings. Native Ollama mode
 is enabled by default; to use an OpenAI-compatible server such as LM Studio, set
 `LLM_USE_NATIVE_OLLAMA=false` and point `OLLAMA_HOST` at that server.
 
-For `qwen3:8b`, LocalGPT keeps answers faster by using a shorter default output
-limit, keeping the model warm with Ollama `keep_alive`, and adding Qwen's
-`/no_think` hint to backend-only prompts. You can raise `QWEN_MAX_TOKENS` if you
-prefer longer answers over speed.
+For Qwen3 models, LocalGPT applies a shorter output limit by default. You can
+raise `QWEN_MAX_TOKENS` if you prefer longer answers over speed.
 
 ## LAN Access
 

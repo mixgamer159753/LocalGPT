@@ -24,7 +24,7 @@ OLLAMA_TAGS_URL = f"{OLLAMA_HOST}/api/tags" if LLM_USE_NATIVE_OLLAMA else f"{OLL
 BACKEND_HOST = os.getenv("BACKEND_HOST", "127.0.0.1")
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8000"))
 
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "qwen3:8b")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "").strip()
 
 # Where the SQLite database lives (chat history persistence).
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./localgpt.db")

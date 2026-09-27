@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowRight, BrainCircuit, ChevronDown, ShieldCheck } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  BrainCircuit,
+  ChevronDown,
+  Code2,
+  Lightbulb,
+  PenLine,
+  ShieldCheck,
+} from "lucide-react";
 import { Message } from "@/types/chat";
 import MessageBubble from "./MessageBubble";
 
@@ -12,11 +21,31 @@ interface Props {
   markdownRich?: boolean;
 }
 
-const SUGGESTIONS = [
-  "Summarize today's top AI news",
-  "Help me plan my week",
-  "Compare two products before I buy",
-  "Explain a topic in simple terms",
+const STARTERS = [
+  {
+    title: "Debug a problem",
+    description: "Trace an error and work toward a fix.",
+    prompt: "Help me debug a problem. Ask me for the code or error details you need.",
+    icon: Code2,
+  },
+  {
+    title: "Write a first draft",
+    description: "Shape a message, outline, or longer piece.",
+    prompt: "Help me write a clear first draft. Ask what I am trying to create.",
+    icon: PenLine,
+  },
+  {
+    title: "Understand a topic",
+    description: "Get a clear explanation, one step at a time.",
+    prompt: "Explain a difficult topic in simple, beginner-friendly terms.",
+    icon: BookOpen,
+  },
+  {
+    title: "Explore an idea",
+    description: "Compare options and choose a useful next step.",
+    prompt: "Help me think through an idea, compare options, and choose a next step.",
+    icon: Lightbulb,
+  },
 ];
 
 function formatDateSeparator(dateStr: string) {
@@ -71,7 +100,7 @@ export default function ChatWindow({ messages, loading, onSend, markdownRich = t
   if (messages.length === 1 && messages[0].id === -1) {
     return (
       <div className="flex flex-1 items-center justify-center overflow-y-auto px-4 py-10">
-        <div className="w-full max-w-lg animate-message-in">
+        <div className="w-full max-w-xl animate-message-in">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[#e58e74] text-[#271914] shadow-lg shadow-[#e58e74]/10">
             <BrainCircuit size={29} strokeWidth={1.7} />
           </div>
@@ -80,25 +109,29 @@ export default function ChatWindow({ messages, loading, onSend, markdownRich = t
               <ShieldCheck size={13} /> Private by design
             </div>
             <h2 className="font-serif text-3xl font-medium tracking-[-0.035em] text-[#f1eee9] sm:text-4xl">
-              Good to see you here.
+              What would you like to work on?
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
-              Ask a question, explore an idea, or get help with the work in front of you.
+              Ask a question, bring a problem, or start with one of these.
             </p>
           </div>
-          <div className="mt-8 grid gap-2.5 sm:grid-cols-2">
-            {SUGGESTIONS.map((hint, i) => (
+          <div className="mt-8 grid grid-cols-1 gap-2.5 min-[560px]:grid-cols-2">
+            {STARTERS.map(({ title, description, prompt, icon: Icon }, i) => (
               <button
-                key={hint}
+                key={title}
                 type="button"
-                onClick={() => onSend?.(hint)}
+                onClick={() => onSend?.(prompt)}
                 style={{ animationDelay: `${i * 60}ms` }}
-                className="group animate-message-in flex min-h-[4.25rem] items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[#191e24]/90 px-4 py-3.5 text-left text-sm font-medium text-slate-300 shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#e58e74]/55 hover:bg-[#20262e] hover:text-white hover:shadow-lg hover:shadow-black/20"
+                className="group animate-message-in flex min-h-[5.25rem] items-center gap-3 rounded-2xl border border-[var(--border)] bg-[#191e24]/90 px-3.5 py-3 text-left shadow-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-[#e58e74]/55 hover:bg-[#20262e] hover:shadow-lg hover:shadow-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e58e74] focus-visible:ring-offset-2 focus-visible:ring-offset-[#111418]"
               >
-                <span>{hint}</span>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2a2524] text-[#e58e74] transition group-hover:bg-[#e58e74] group-hover:text-[#271914]">
-                  <ArrowRight size={14} />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#24282d] text-[#f0a087] transition group-hover:bg-[#e58e74] group-hover:text-[#271914]">
+                  <Icon size={17} strokeWidth={1.8} />
                 </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold text-slate-200 transition group-hover:text-white">{title}</span>
+                  <span className="mt-1 block text-xs leading-4 text-slate-500 transition group-hover:text-slate-400">{description}</span>
+                </span>
+                <ArrowUpRight size={15} className="shrink-0 text-slate-600 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#f0a087]" />
               </button>
             ))}
           </div>

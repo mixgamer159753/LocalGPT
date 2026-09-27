@@ -7,32 +7,13 @@ interface Props {
   onSend: (message: string, images?: string[]) => void;
   onStop: () => void;
   disabled?: boolean;
-  model?: string;
 }
 
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 3.5 * 1024 * 1024;
 const MAX_MESSAGE_LENGTH = 20_000;
 
-function getPlaceholder(model?: string) {
-  if (!model) {
-    return "Ask LocalGPT anything";
-  }
-
-  const lower = model.toLowerCase();
-  if (lower.includes("coder")) {
-    return "Ask for code, tests, reviews, or debugging help";
-  }
-  if (lower.includes("llama")) {
-    return "Ask anything: research, writing, planning, or ideas";
-  }
-  if (lower.includes("qwen")) {
-    return "Ask for writing, analysis, or planning";
-  }
-  return "Ask LocalGPT anything";
-}
-
-export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
+export default function ChatInput({ onSend, onStop, disabled }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
@@ -163,7 +144,7 @@ export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
             disabled={disabled}
             rows={1}
             maxLength={MAX_MESSAGE_LENGTH}
-            placeholder={getPlaceholder(model)}
+            placeholder="Message LocalGPT…"
             className="max-h-[168px] min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-6 text-slate-950 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-white dark:placeholder:text-slate-500"
           />
 

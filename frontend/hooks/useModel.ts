@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const MODEL_STORAGE_KEY = "localgpt:selected-model";
-const DEFAULT_MODEL = "qwen3:8b";
+const DEFAULT_MODEL = "";
 
 export function useModel(defaultModel = DEFAULT_MODEL) {
   const [model, setModelState] = useState(defaultModel);
@@ -32,7 +32,11 @@ export function useModel(defaultModel = DEFAULT_MODEL) {
   const setModel = useCallback((nextModel: string) => {
     setModelState(nextModel);
     modelRef.current = nextModel;
-    window.localStorage.setItem(MODEL_STORAGE_KEY, nextModel);
+    if (nextModel) {
+      window.localStorage.setItem(MODEL_STORAGE_KEY, nextModel);
+    } else {
+      window.localStorage.removeItem(MODEL_STORAGE_KEY);
+    }
   }, []);
 
   return { model, setModel, modelRef };

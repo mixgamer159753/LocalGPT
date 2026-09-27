@@ -108,6 +108,7 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
 
   const current = splitModelName(model);
   const thinkingEffortIndex = THINKING_LEVELS.indexOf(thinkingEffort);
+  const effortProgress = Math.max(0, thinkingEffortIndex) / (THINKING_LEVELS.length - 1) * 100;
   const activeInstalled = models.some((candidate) => candidate.name === model);
 
   useEffect(() => {
@@ -141,14 +142,21 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
               Local workspace
-              <span className={`inline-block h-2 w-2 rounded-full ${health === null ? "bg-amber-400" : health.status === "ok" ? "bg-emerald-500" : "bg-rose-400"}`} />
+              <span className={`inline-block h-2 w-2 rounded-full ${healthUnavailable || health?.status === "degraded" ? "bg-rose-400" : health === null ? "bg-amber-400" : "bg-emerald-500"}`} />
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {current.family}
-              {current.version ? <span className="text-slate-400 dark:text-slate-500">:{current.version}</span> : null}
-              {!activeInstalled && models.length > 0 ? (
-                <span className="ml-2 text-amber-700 dark:text-amber-300">not installed</span>
-              ) : null}
+              {model ? (
+                <>
+                  {current.family}
+                  {current.version ? <span className="text-slate-400 dark:text-slate-500">:{current.version}</span> : null}
+                  {!activeInstalled && models.length > 0 ? (
+                    <span className="ml-2 text-amber-300">not installed</span>
+                  ) : null}
+                  {!activeInstalled && models.length === 0 && !loadingModels ? (
+                    <span className="ml-2 text-slate-500">last selected</span>
+                  ) : null}
+                </>
+              ) : loadingModels ? "Connecting to your model…" : llmOnline ? "Choose a local model" : "Model connection unavailable"}
             </p>
           </div>
         </div>
@@ -165,7 +173,7 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
             >
               <Cpu size={14} className="text-[#e58e74]" />
               <span className="min-w-0 truncate sm:max-w-[19rem]" title={model}>
-                {current.family}{current.version ? `:${current.version}` : ""}
+                {model ? `${current.family}${current.version ? `:${current.version}` : ""}` : loadingModels ? "Detecting model…" : llmOnline ? "Select a model" : "Model offline"}
               </span>
               <ChevronDown size={14} className={`transition ${dropdownOpen ? "rotate-180" : ""}`} />
             </button>
@@ -270,6 +278,8 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
                     onChange={(event) => onThinkingEffortChange(THINKING_LEVELS[Number(event.target.value)])}
                     disabled={disabled}
                     aria-valuetext={thinkingEffort}
+                    aria-label="Thinking effort"
+                    style={{ "--effort-progress": `${effortProgress}%` } as React.CSSProperties}
                     className="effort-slider mt-3 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-500">

@@ -48,7 +48,13 @@ input {
   appearance: none;
   height: 0.5rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, #3a414a 0%, #e58e74 100%);
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent) var(--effort-progress, 100%),
+    #303943 var(--effort-progress, 100%),
+    #303943 100%
+  );
 }
 
 .effort-slider::-webkit-slider-thumb {

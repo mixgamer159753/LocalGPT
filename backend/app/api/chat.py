@@ -210,6 +210,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     memory_context = await _get_memory_context(db)
 
     try:
+        request.model = await asyncio.to_thread(ollama.resolve_model, request.model)
         answer = await asyncio.to_thread(
             ollama.chat,
             enriched_messages,
@@ -245,6 +246,8 @@ async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str) -> 
         conversation = Conversation(title=_default_title(first_user_text), model=request.model)
         db.add(conversation)
         await db.flush()
+    elif request.model:
+        conversation.model = request.model
 
     last_user_message = next((m for m in reversed(request.messages) if m.role == "user"), None)
     if last_user_message is None:
@@ -270,6 +273,11 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         if conversation is None:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
+    try:
+        request.model = await asyncio.to_thread(ollama.resolve_model, request.model)
+    except OllamaUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+
     created_new_conversation = conversation is None
     if conversation is None:
         first_user_msg = next((m for m in request.messages if m.role == "user"), None)
@@ -278,6 +286,9 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         db.add(conversation)
         await db.commit()
         await db.refresh(conversation)
+    else:
+        conversation.model = request.model
+        await db.commit()
 
     conversation_id = conversation.id
     last_user_message = next((m for m in reversed(messages) if m["role"] == "user"), None)

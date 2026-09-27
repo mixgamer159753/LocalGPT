@@ -1,10 +1,11 @@
 "use client";
 
-import { ComponentPropsWithoutRef, useEffect, useId, useState } from "react";
-import { Bot, Check, Copy, Download, ExternalLink, Link2Off, User } from "lucide-react";
-import ReactMarkdown, { Components } from "react-markdown";
+import { ComponentPropsWithoutRef, useEffect, useMemo, useState } from "react";
+import { Bot, Check, Copy, ExternalLink, Link2Off, User } from "lucide-react";
+import ReactMarkdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Message } from "@/types/chat";
+import CodeBlock from "./CodeBlock";
 
 interface Props {
   message: Message;
@@ -12,9 +13,19 @@ interface Props {
   markdownRich?: boolean;
 }
 
-type CodeProps = ComponentPropsWithoutRef<"code"> & {
-  inline?: boolean;
-};
+function MarkdownPre({ node, children }: ComponentPropsWithoutRef<"pre"> & ExtraProps) {
+  const codeNode = node?.children.find((child) => child.type === "element" && child.tagName === "code");
+  if (!codeNode || codeNode.type !== "element") return <pre>{children}</pre>;
+
+  const classes = codeNode.properties.className;
+  const language = Array.isArray(classes)
+    ? String(classes.find((name) => String(name).startsWith("language-")) ?? "").replace(/^language-/, "")
+    : "";
+  const source = codeNode.children.map((child) => child.type === "text" ? child.value : "").join("");
+
+  // Replace the Markdown <pre> itself so panels never end up nested inside a <pre>.
+  return <CodeBlock code={source.replace(/\n$/, "")} language={language} />;
+}
 
 function normalizeHref(href?: string) {
   if (!href) {
@@ -39,38 +50,12 @@ function safeImageSrc(src: string | Blob | undefined) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
-function extensionForLanguage(language: string) {
-  const map: Record<string, string> = {
-    bash: "sh",
-    css: "css",
-    html: "html",
-    javascript: "js",
-    js: "js",
-    json: "json",
-    markdown: "md",
-    md: "md",
-    powershell: "ps1",
-    python: "py",
-    py: "py",
-    shell: "sh",
-    sh: "sh",
-    ts: "ts",
-    tsx: "tsx",
-    typescript: "ts",
-    yaml: "yml",
-    yml: "yml",
-  };
-  return map[language.toLowerCase()] || "txt";
-}
-
 export default function MessageBubble({ message, index = 0, markdownRich = true }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
   const isStopped = message.status === "stopped";
   const [copied, setCopied] = useState(false);
-  const [codeCopiedId, setCodeCopiedId] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const blockId = useId();
 
   useEffect(() => {
     if (!lightboxSrc) return;
@@ -91,28 +76,6 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
     }
   }
 
-  async function handleCopyCode(code: string, id: string) {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCodeCopiedId(id);
-      window.setTimeout(() => setCodeCopiedId(null), 1800);
-    } catch {
-      setCodeCopiedId(null);
-    }
-  }
-
-  function handleDownloadCode(code: string, language: string) {
-    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `localgpt-${Date.now()}.${extensionForLanguage(language)}`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
   const time = message.created_at
     ? new Date(message.created_at).toLocaleTimeString([], {
         hour: "2-digit",
@@ -120,52 +83,14 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
       })
     : "";
 
-  const markdownComponents: Components = {
-    code({ className, children, inline, ...props }: CodeProps) {
-      const codeStr = String(children).replace(/\n$/, "");
-      const language = className?.replace("language-", "") || "";
-      const isInline = inline ?? !className;
-
-      if (isInline) {
-        return (
-          <code
-            className="rounded-md border border-slate-700 bg-slate-900 px-1.5 py-0.5 font-mono text-[0.85em] text-[#ffb297]"
-            {...props}
-          >
-            {children}
-          </code>
-        );
-      }
-
-      const copyId = `${blockId}-${language}-${codeStr.length}-${codeStr.slice(0, 24)}`;
-      const isCopied = codeCopiedId === copyId;
+  // Stable renderers preserve each panel's wrap, copy, and expanded state while streaming.
+  const markdownComponents = useMemo<Components>(() => ({
+    pre: MarkdownPre,
+    code({ children }) {
       return (
-        <div className="my-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
-          <div className="flex h-10 items-center border-b border-white/10 px-3">
-            <span className="text-xs font-medium uppercase text-slate-400">{language || "code"}</span>
-            <button
-              type="button"
-              onClick={() => void handleCopyCode(codeStr, copyId)}
-              className="ml-auto flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:bg-white/10 hover:text-white"
-            >
-              {isCopied ? <Check size={13} /> : <Copy size={13} />}
-              {isCopied ? "Copied" : "Copy"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDownloadCode(codeStr, language)}
-              className="ml-1 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:bg-white/10 hover:text-white"
-            >
-              <Download size={13} />
-              File
-            </button>
-          </div>
-          <pre className="m-0 overflow-x-auto p-4 text-sm leading-6 text-slate-100">
-            <code className={className} {...props}>
-              {children}
-            </code>
-          </pre>
-        </div>
+        <code className="rounded-md border border-[#343b46] bg-[#12161c] px-1.5 py-0.5 font-mono text-[0.85em] text-[#ffb297] before:content-none after:content-none">
+          {children}
+        </code>
       );
     },
     p({ children }) {
@@ -259,7 +184,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
         </blockquote>
       );
     },
-  };
+  }), []);
 
   return (
     <div
@@ -268,7 +193,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
       }`}
       style={{ animationDelay: `${Math.min(index * 24, 160)}ms` }}
     >
-      <div className={`flex max-w-[96%] gap-2.5 md:max-w-[82%] md:gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
+      <div className={`flex min-w-0 gap-2.5 md:gap-3 ${isUser ? "max-w-[96%] flex-row-reverse md:max-w-[82%]" : "max-w-full"}`}>
         <div className="mt-1 shrink-0">
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full ${
@@ -308,7 +233,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
                 {message.content && <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>}
               </div>
             ) : message.content && markdownRich ? (
-              <div className="prose prose-sm max-w-none prose-custom dark:prose-invert prose-headings:font-semibold prose-a:no-underline hover:prose-a:underline prose-pre:m-0 prose-pre:bg-transparent prose-pre:p-0">
+              <div className="prose prose-sm max-w-none break-words prose-custom dark:prose-invert prose-headings:font-semibold prose-a:no-underline hover:prose-a:underline">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {message.content}
                 </ReactMarkdown>

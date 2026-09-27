@@ -9,7 +9,6 @@ import {
   Menu,
   RefreshCw,
   Search,
-  Settings,
 } from "lucide-react";
 import { fetchHealth, fetchModels } from "@/lib/api";
 import { HealthInfo, ModelInfo } from "@/types/chat";
@@ -18,7 +17,6 @@ interface Props {
   onToggleSidebar: () => void;
   model: string;
   onModelChange: (model: string, automatic?: boolean) => void;
-  onOpenSettings: () => void;
   disabled?: boolean;
 }
 
@@ -44,7 +42,7 @@ function modelMeta(model: ModelInfo) {
   ].filter(Boolean).join(" / ");
 }
 
-export default function Header({ onToggleSidebar, model, onModelChange, onOpenSettings, disabled }: Props) {
+export default function Header({ onToggleSidebar, model, onModelChange, disabled }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [healthUnavailable, setHealthUnavailable] = useState(false);
@@ -263,14 +261,6 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
             {healthUnavailable ? "Backend offline" : health === null ? "Connecting" : health.database_connected === false ? "Database issue" : health.ollama_reachable === false ? "Model offline" : "Ready"}
           </div>
 
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-white"
-            aria-label="Open settings"
-          >
-            <Settings size={16} />
-          </button>
         </div>
       </div>
     </header>

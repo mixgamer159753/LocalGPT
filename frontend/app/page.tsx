@@ -5,12 +5,11 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import ChatWindow from "@/components/ChatWindow";
 import ChatInput from "@/components/ChatInput";
-import SettingsModal from "@/components/SettingsModal";
 import { useChat } from "@/hooks/useChat";
 import { useSettings } from "@/hooks/useSettings";
 
 export default function Home() {
-  const { settings, setSettings, resetSettings } = useSettings();
+  const { settings } = useSettings();
   const {
     messages,
     sendMessage,
@@ -29,7 +28,6 @@ export default function Home() {
   } = useChat(settings);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -75,7 +73,6 @@ export default function Home() {
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           model={model}
           disabled={loading}
-          onOpenSettings={() => setSettingsOpen(true)}
           onModelChange={(nextModel, automatic = false) => {
             const activeConversationHasMessages = conversationId !== null && messages.some((message) => message.id !== -1);
             if (
@@ -105,13 +102,6 @@ export default function Home() {
         />
       </section>
 
-      <SettingsModal
-        open={settingsOpen}
-        settings={settings}
-        onChange={setSettings}
-        onReset={resetSettings}
-        onClose={() => setSettingsOpen(false)}
-      />
     </main>
   );
 }

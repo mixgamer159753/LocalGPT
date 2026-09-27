@@ -24,6 +24,7 @@ async def stream_chat(
     max_tokens: int | None = None,
     response_style: str = "balanced",
     memory_context: str = "",
+    thinking_effort: str = "max",
 ):
     """Yield model text chunks and raise OllamaUnavailableError on failure."""
 
@@ -35,6 +36,7 @@ async def stream_chat(
         max_tokens=max_tokens,
         response_style=response_style,
         memory_context=memory_context,
+        thinking_effort=thinking_effort,
     )
 
     logger.info(

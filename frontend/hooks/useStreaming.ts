@@ -81,6 +81,7 @@ export function useStreaming(opts: UseStreamingOptions) {
           model: modelRef.current,
           temperature: settingsRef.current.temperature,
           max_tokens: settingsRef.current.maxTokens || 16384,
+          thinking_effort: settingsRef.current.thinkingEffort,
           response_style: settingsRef.current.systemStyle,
           web_search_enabled: settingsRef.current.webSearch,
           conversation_id: conversationIdRef.current,

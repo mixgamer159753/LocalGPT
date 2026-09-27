@@ -7,9 +7,10 @@ import ChatWindow from "@/components/ChatWindow";
 import ChatInput from "@/components/ChatInput";
 import { useChat } from "@/hooks/useChat";
 import { useSettings } from "@/hooks/useSettings";
+import { ThinkingEffort } from "@/types/chat";
 
 export default function Home() {
-  const { settings } = useSettings();
+  const { settings, setSettings } = useSettings();
   const {
     messages,
     sendMessage,
@@ -72,6 +73,10 @@ export default function Home() {
         <Header
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           model={model}
+          thinkingEffort={settings.thinkingEffort}
+          onThinkingEffortChange={(thinkingEffort: ThinkingEffort) => {
+            setSettings({ ...settings, thinkingEffort });
+          }}
           disabled={loading}
           onModelChange={(nextModel, automatic = false) => {
             const activeConversationHasMessages = conversationId !== null && messages.some((message) => message.id !== -1);

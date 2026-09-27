@@ -8,6 +8,7 @@ const SETTINGS_STORAGE_KEY = "localgpt:user-settings";
 export const DEFAULT_SETTINGS: UserSettings = {
   temperature: 0.4,
   maxTokens: 16384,
+  thinkingEffort: "max",
   systemStyle: "balanced",
   webSearch: true,
   markdownRich: true,
@@ -21,11 +22,15 @@ function loadSettings(): UserSettings {
     }
 
     const parsed = JSON.parse(raw) as Partial<UserSettings>;
+    const effortLevels = ["low", "medium", "high", "max"];
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
       temperature: Number.isFinite(parsed.temperature) ? Number(parsed.temperature) : DEFAULT_SETTINGS.temperature,
       maxTokens: Number.isFinite(parsed.maxTokens) ? Number(parsed.maxTokens) : DEFAULT_SETTINGS.maxTokens,
+      thinkingEffort: effortLevels.includes(parsed.thinkingEffort ?? "")
+        ? parsed.thinkingEffort!
+        : DEFAULT_SETTINGS.thinkingEffort,
     };
   } catch {
     return DEFAULT_SETTINGS;

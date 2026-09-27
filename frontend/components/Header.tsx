@@ -11,11 +11,15 @@ import {
   Search,
 } from "lucide-react";
 import { fetchHealth, fetchModels } from "@/lib/api";
-import { HealthInfo, ModelInfo } from "@/types/chat";
+import { HealthInfo, ModelInfo, ThinkingEffort } from "@/types/chat";
+
+const THINKING_LEVELS: ThinkingEffort[] = ["low", "medium", "high", "max"];
 
 interface Props {
   onToggleSidebar: () => void;
   model: string;
+  thinkingEffort: ThinkingEffort;
+  onThinkingEffortChange: (effort: ThinkingEffort) => void;
   onModelChange: (model: string, automatic?: boolean) => void;
   disabled?: boolean;
 }
@@ -43,7 +47,7 @@ function modelMeta(model: ModelInfo) {
   ].filter(Boolean).join(" / ");
 }
 
-export default function Header({ onToggleSidebar, model, onModelChange, disabled }: Props) {
+export default function Header({ onToggleSidebar, model, thinkingEffort, onThinkingEffortChange, onModelChange, disabled }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [healthUnavailable, setHealthUnavailable] = useState(false);
@@ -103,6 +107,7 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
   }, [dropdownOpen]);
 
   const current = splitModelName(model);
+  const thinkingEffortIndex = THINKING_LEVELS.indexOf(thinkingEffort);
   const activeInstalled = models.some((candidate) => candidate.name === model);
 
   useEffect(() => {
@@ -247,6 +252,31 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
                     })}
                   </div>
                 )}
+
+                <div className="border-t border-[var(--border)] bg-[#14191f] px-3.5 py-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <label htmlFor="thinking-effort" className="font-medium text-slate-300">
+                      Effort <span className="ml-1 font-semibold capitalize text-[#f0a087]">{thinkingEffort}</span>
+                    </label>
+                    <span className="text-[10px] text-slate-500">More time, deeper answers</span>
+                  </div>
+                  <input
+                    id="thinking-effort"
+                    type="range"
+                    min={0}
+                    max={THINKING_LEVELS.length - 1}
+                    step={1}
+                    value={Math.max(thinkingEffortIndex, 0)}
+                    onChange={(event) => onThinkingEffortChange(THINKING_LEVELS[Number(event.target.value)])}
+                    disabled={disabled}
+                    aria-valuetext={thinkingEffort}
+                    className="effort-slider mt-3 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-500">
+                    <span>Faster</span>
+                    <span>Smarter</span>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>

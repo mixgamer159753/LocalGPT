@@ -25,12 +25,20 @@ SYSTEM_PROMPT = (
 )
 
 
-QWEN_SPEED_PROMPT = "Be concise. Skip thinking aloud."
-
 STYLE_PROMPTS = {
     "balanced": "Use balanced detail.",
     "concise": "Be very short.",
     "detailed": "Be thorough.",
+}
+
+EFFORT_PROMPTS = {
+    "low": "Answer efficiently, using only the reasoning needed for the task.",
+    "medium": "Think through the main steps and check the answer before responding.",
+    "high": "Reason carefully, check assumptions and edge cases, then give a clear answer.",
+    "max": (
+        "Use maximum reasoning effort for difficult tasks: plan, compare approaches, and verify the result. "
+        "Keep private reasoning internal and present clear conclusions with a concise explanation."
+    ),
 }
 
 
@@ -79,11 +87,15 @@ def build_chat_payload(
     max_tokens: int | None = None,
     response_style: str = "balanced",
     memory_context: str = "",
+    thinking_effort: str = "max",
 ) -> dict:
+    effort = thinking_effort if thinking_effort in EFFORT_PROMPTS else "max"
     memory_block = f"\n\n{memory_context}" if memory_context else ""
-    system_prompt = f"{SYSTEM_PROMPT} {_current_date_context()} {STYLE_PROMPTS.get(response_style, STYLE_PROMPTS['balanced'])}{memory_block}"
-    if is_qwen3_model(model):
-        system_prompt = f"{system_prompt} {QWEN_SPEED_PROMPT}"
+    system_prompt = (
+        f"{SYSTEM_PROMPT} {_current_date_context()} "
+        f"{STYLE_PROMPTS.get(response_style, STYLE_PROMPTS['balanced'])} "
+        f"{EFFORT_PROMPTS[effort]}{memory_block}"
+    )
 
     safe_messages = sanitize_messages(messages)
     if LLM_USE_NATIVE_OLLAMA:
@@ -101,6 +113,7 @@ def build_chat_payload(
             "messages": [{"role": "system", "content": system_prompt}] + optimize_messages_for_model(safe_messages, model),
             "stream": stream,
             "options": options,
+            "think": effort != "low",
             "keep_alive": OLLAMA_KEEP_ALIVE,
         }
     else:
@@ -109,6 +122,7 @@ def build_chat_payload(
             "messages": [{"role": "system", "content": system_prompt}] + safe_messages,
             "stream": stream,
             "max_tokens": clamp_tokens(max_tokens, model),
+            "reasoning_effort": effort,
         }
         if temperature is not None:
             payload["temperature"] = temperature

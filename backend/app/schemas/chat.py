@@ -39,6 +39,7 @@ class ChatRequest(BaseModel):
     )
     temperature: Optional[float] = Field(default=None, ge=0, le=2)
     max_tokens: Optional[int] = Field(default=None, ge=1, le=16384)
+    thinking_effort: Literal["low", "medium", "high", "max"] = "max"
     response_style: Literal["balanced", "concise", "detailed"] = "balanced"
     web_search_enabled: bool = True
     conversation_id: Optional[int] = None

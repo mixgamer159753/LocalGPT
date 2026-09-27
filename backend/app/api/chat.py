@@ -218,6 +218,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             request.max_tokens,
             request.response_style,
             memory_context,
+            request.thinking_effort,
         )
     except OllamaUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
@@ -299,6 +300,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 request.max_tokens,
                 request.response_style,
                 memory_context=memory_context,
+                thinking_effort=request.thinking_effort,
             ):
                 chunks.append(chunk)
                 yield _stream_event("token", content=chunk)

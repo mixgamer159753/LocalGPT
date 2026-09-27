@@ -51,9 +51,12 @@ export interface HealthInfo {
   database_detail?: string | null;
 }
 
+export type ThinkingEffort = "low" | "medium" | "high" | "max";
+
 export interface UserSettings {
   temperature: number;
   maxTokens: number;
+  thinkingEffort: ThinkingEffort;
   systemStyle: "balanced" | "concise" | "detailed";
   webSearch: boolean;
   markdownRich: boolean;

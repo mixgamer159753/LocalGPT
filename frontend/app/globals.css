@@ -44,6 +44,32 @@ input {
   font: inherit;
 }
 
+.effort-slider {
+  appearance: none;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3a414a 0%, #e58e74 100%);
+}
+
+.effort-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid #f0a087;
+  border-radius: 50%;
+  background: #111418;
+  box-shadow: 0 0 0 3px rgba(229, 142, 116, 0.12);
+}
+
+.effort-slider::-moz-range-thumb {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid #f0a087;
+  border-radius: 50%;
+  background: #111418;
+  box-shadow: 0 0 0 3px rgba(229, 142, 116, 0.12);
+}
+
 button:focus-visible,
 textarea:focus-visible,
 input:focus-visible {

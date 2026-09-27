@@ -27,7 +27,8 @@ class OllamaService:
 
     def chat(self, messages: list[dict], model: str | None = None,
              temperature: float | None = None, max_tokens: int | None = None,
-             response_style: str = "balanced", memory_context: str = "") -> str:
+             response_style: str = "balanced", memory_context: str = "",
+             thinking_effort: str = "max") -> str:
 
         payload = build_chat_payload(
             messages=messages,
@@ -37,6 +38,7 @@ class OllamaService:
             max_tokens=max_tokens,
             response_style=response_style,
             memory_context=memory_context,
+            thinking_effort=thinking_effort,
         )
 
         try:

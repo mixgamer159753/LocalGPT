@@ -1,0 +1,56 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { UserSettings } from "@/types/chat";
+
+const SETTINGS_STORAGE_KEY = "localgpt:user-settings";
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  temperature: 0.4,
+  maxTokens: 16384,
+  systemStyle: "balanced",
+  webSearch: true,
+  markdownRich: true,
+};
+
+function loadSettings(): UserSettings {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_SETTINGS;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<UserSettings>;
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      temperature: Number.isFinite(parsed.temperature) ? Number(parsed.temperature) : DEFAULT_SETTINGS.temperature,
+      maxTokens: Number.isFinite(parsed.maxTokens) ? Number(parsed.maxTokens) : DEFAULT_SETTINGS.maxTokens,
+    };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export function useSettings() {
+  const [settings, setSettingsState] = useState<UserSettings>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSettingsState(loadSettings());
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const setSettings = useCallback((nextSettings: UserSettings) => {
+    setSettingsState(nextSettings);
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+  }, []);
+
+  const resetSettings = useCallback(() => {
+    setSettings(DEFAULT_SETTINGS);
+  }, [setSettings]);
+
+  return { settings, setSettings, resetSettings };
+}

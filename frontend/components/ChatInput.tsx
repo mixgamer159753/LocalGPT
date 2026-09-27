@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bug, Code2, FileText, ImagePlus, Search, Send, Sparkles, Square, X } from "lucide-react";
+import { ImagePlus, Send, Square, X } from "lucide-react";
 
 interface Props {
   onSend: (message: string, images?: string[]) => void;
@@ -9,14 +9,6 @@ interface Props {
   disabled?: boolean;
   model?: string;
 }
-
-const QUICK_ACTIONS = [
-  { label: "Search Web", icon: Search, prompt: "Search the web and answer with sources: " },
-  { label: "Think Longer", icon: Sparkles, prompt: "Think carefully and give a structured answer: " },
-  { label: "Summarize", icon: FileText, prompt: "Summarize this clearly: " },
-  { label: "Generate Code", icon: Code2, prompt: "Generate complete practical code for: " },
-  { label: "Debug", icon: Bug, prompt: "Debug this and explain the fix: " },
-];
 
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 3.5 * 1024 * 1024;
@@ -123,27 +115,6 @@ export default function ChatInput({ onSend, onStop, disabled, model }: Props) {
   return (
     <div className="shrink-0 border-t border-[var(--border)]/80 bg-[var(--surface)]/85 px-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-5 sm:pt-4 md:px-7">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-2.5 flex gap-2 overflow-x-auto pb-1">
-          {QUICK_ACTIONS.map((action) => {
-            const Icon = action.icon;
-            return (
-              <button
-                key={action.label}
-                type="button"
-                onClick={() => {
-                  setText((current) => `${action.prompt}${current}`.trimStart());
-                  textareaRef.current?.focus();
-                }}
-                disabled={disabled}
-                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-white/65 px-3 text-xs font-medium text-slate-600 transition hover:border-[#b4c9b7] hover:bg-white hover:text-[#274b37] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-[#456c53] dark:hover:text-white"
-              >
-                <Icon size={13} />
-                {action.label}
-              </button>
-            );
-          })}
-        </div>
-
         {images.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2" aria-label={`${images.length} image attachments`}>
             {images.map((img, i) => (

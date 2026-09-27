@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 
@@ -12,14 +11,10 @@ from app.core.config import (
     OLLAMA_READ_TIMEOUT,
     LLM_USE_NATIVE_OLLAMA,
 )
+from app.services.ollama import OllamaUnavailableError
 from app.services.ollama_payload import build_chat_payload
 
 logger = logging.getLogger("localgpt.streaming")
-
-ERROR_PREFIX = "[LOCALGPT_ERROR]"
-STATUS_PREFIX = "[LOCALGPT_STATUS]"
-
-FLUSH_INTERVAL = 0.08
 
 
 async def stream_chat(
@@ -30,7 +25,7 @@ async def stream_chat(
     response_style: str = "balanced",
     memory_context: str = "",
 ):
-    """Yield plain-text chunks from LLM as they arrive."""
+    """Yield model text chunks and raise OllamaUnavailableError on failure."""
 
     payload = build_chat_payload(
         messages=messages,
@@ -50,6 +45,18 @@ async def stream_chat(
 
     timeout = Timeout(OLLAMA_CONNECT_TIMEOUT, read=OLLAMA_READ_TIMEOUT)
     think_filter = ThinkBlockFilter()
+    output: list[str] = []
+    count_since_flush = 0
+    provider_completed = False
+
+    def flush() -> str | None:
+        nonlocal count_since_flush
+        if not output:
+            return None
+        chunk = "".join(output)
+        output.clear()
+        count_since_flush = 0
+        return chunk
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -57,21 +64,7 @@ async def stream_chat(
                 if response.status_code >= 400:
                     body = await response.aread()
                     logger.error("LLM provider returned %s: %s", response.status_code, body)
-                    yield _error_chunk(_extract_error(body))
-                    return
-
-                buf = []
-                count_since_flush = 0
-                FLUSH_EVERY = 3
-
-                def do_flush():
-                    nonlocal count_since_flush
-                    if not buf:
-                        return None
-                    chunk = "".join(buf)
-                    buf.clear()
-                    count_since_flush = 0
-                    return chunk
+                    raise OllamaUnavailableError(_extract_error(body))
 
                 if LLM_USE_NATIVE_OLLAMA:
                     async for line in response.aiter_lines():
@@ -82,59 +75,67 @@ async def stream_chat(
                         except json.JSONDecodeError:
                             continue
                         if "error" in data:
-                            yield _error_chunk(_sanitize_error(str(data["error"])))
-                            return
+                            raise OllamaUnavailableError(_sanitize_error(str(data["error"])))
+
                         content = data.get("message", {}).get("content")
                         if content:
-                            buf.append(think_filter.feed(content))
+                            output.append(think_filter.feed(content))
                             count_since_flush += 1
                         if data.get("done", False):
-                            buf.append(think_filter.flush())
-                            chunk = do_flush()
+                            provider_completed = True
+                            output.append(think_filter.flush())
+                            chunk = flush()
                             if chunk:
                                 yield chunk
                             break
-                        if count_since_flush >= FLUSH_EVERY:
-                            chunk = do_flush()
+                        if count_since_flush >= 3:
+                            chunk = flush()
                             if chunk:
                                 yield chunk
                 else:
                     async for line in response.aiter_lines():
-                        if not line:
+                        if not line or not line.startswith("data: "):
                             continue
-                        if line.startswith("data: "):
-                            raw = line[6:]
-                            if raw.strip() == "[DONE]":
-                                buf.append(think_filter.flush())
-                                chunk = do_flush()
-                                if chunk:
-                                    yield chunk
-                                break
-                            try:
-                                data = json.loads(raw)
-                            except json.JSONDecodeError:
-                                continue
-                            if "error" in data:
-                                yield _error_chunk(_sanitize_error(str(data["error"])))
-                                return
-                            delta = data.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content")
-                            if content:
-                                buf.append(think_filter.feed(content))
-                                count_since_flush += 1
-                            if count_since_flush >= FLUSH_EVERY:
-                                chunk = do_flush()
-                                if chunk:
-                                    yield chunk
+                        raw = line[6:]
+                        if raw.strip() == "[DONE]":
+                            provider_completed = True
+                            output.append(think_filter.flush())
+                            chunk = flush()
+                            if chunk:
+                                yield chunk
+                            break
+                        try:
+                            data = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue
+                        if "error" in data:
+                            raise OllamaUnavailableError(_sanitize_error(str(data["error"])))
 
-    except httpx.ConnectError:
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            output.append(think_filter.feed(content))
+                            count_since_flush += 1
+                        if count_since_flush >= 3:
+                            chunk = flush()
+                            if chunk:
+                                yield chunk
+
+                if not provider_completed:
+                    raise OllamaUnavailableError("LLM provider ended the stream unexpectedly.")
+
+    except OllamaUnavailableError:
+        raise
+    except httpx.ConnectError as exc:
         logger.error("Could not connect to LLM provider at %s", OLLAMA_CHAT_URL)
-        yield _error_chunk(f"Could not reach LLM provider at {OLLAMA_CHAT_URL}. Is it running?")
-    except httpx.TimeoutException:
-        yield _error_chunk("LLM provider timed out while generating a response.")
+        raise OllamaUnavailableError(
+            f"Could not reach LLM provider at {OLLAMA_CHAT_URL}. Is it running?"
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise OllamaUnavailableError("LLM provider timed out while generating a response.") from exc
     except httpx.HTTPError as exc:
         logger.exception("Unexpected error while streaming from LLM provider")
-        yield _error_chunk(f"Unexpected error talking to LLM provider: {exc}")
+        raise OllamaUnavailableError(f"Unexpected error talking to LLM provider: {exc}") from exc
 
 
 def _extract_error(body: bytes) -> str:
@@ -152,14 +153,6 @@ def _sanitize_error(detail: str) -> str:
     if "image" in detail.lower() or "does not support" in detail.lower():
         return "The model cannot process images. Text-only messages only."
     return detail or "LLM returned an error."
-
-
-def _error_chunk(message: str) -> str:
-    return f"{ERROR_PREFIX} {message}"
-
-
-def status_chunk(message: str) -> str:
-    return f"{STATUS_PREFIX} {message}\n"
 
 
 class ThinkBlockFilter:

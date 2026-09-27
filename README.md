@@ -157,7 +157,12 @@ NEXT_PUBLIC_BACKEND_PORT=8000
 | `GET` | `/api/conversations/{id}` | Conversation with messages |
 | `DELETE` | `/api/conversations/{id}` | Delete a conversation |
 | `POST` | `/api/chat` | Non-streaming chat completion |
-| `POST` | `/api/chat/stream` | Streaming chat completion |
+| `POST` | `/api/chat/stream` | Streaming chat completion as newline-delimited JSON events |
+
+The streaming endpoint sends one JSON event per line: `status` carries a
+progress message, `token` carries generated text, `error` reports a failure,
+and `done` marks a successfully completed and saved response. Deploy the backend
+and frontend together when changing this protocol.
 
 ## Validation
 

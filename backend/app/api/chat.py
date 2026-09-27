@@ -1,6 +1,7 @@
 import logging
 import datetime
 import asyncio
+import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -20,7 +21,7 @@ from app.schemas.chat import (
     ModelInfo,
 )
 from app.services.ollama import OllamaService, OllamaUnavailableError
-from app.services.streaming import ERROR_PREFIX, stream_chat, status_chunk
+from app.services.streaming import stream_chat
 from app.services.web_research import apply_research_context, research_for_messages
 from app.services.memory import build_memory_context, get_all_memories, set_memory, delete_memory
 from app.schemas.chat import ContentPart
@@ -31,6 +32,10 @@ logger = logging.getLogger("localgpt.chat")
 router = APIRouter(prefix="/api", tags=["Chat"])
 
 ollama = OllamaService()
+
+
+def _stream_event(event_type: str, **payload: str) -> str:
+    return json.dumps({"type": event_type, **payload}, ensure_ascii=False) + "\n"
 
 
 def _utcnow() -> datetime.datetime:
@@ -279,10 +284,11 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     async def generate():
         chunks: list[str] = []
         stream_failed = False
+        error_message = ""
         try:
             research = await research_for_messages(messages) if request.web_search_enabled else None
             if research is not None:
-                yield status_chunk(research.decision.status)
+                yield _stream_event("status", message=research.decision.status)
             enriched_messages = apply_research_context(messages, research)
             memory_context = await _get_memory_context(db)
 
@@ -294,12 +300,14 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 request.response_style,
                 memory_context=memory_context,
             ):
-                if chunk.startswith(ERROR_PREFIX):
-                    stream_failed = True
-                    yield chunk
-                    return
                 chunks.append(chunk)
-                yield chunk
+                yield _stream_event("token", content=chunk)
+            if not "".join(chunks).strip():
+                stream_failed = True
+                error_message = "The model returned an empty response."
+        except OllamaUnavailableError as exc:
+            stream_failed = True
+            error_message = str(exc)
         except asyncio.CancelledError:
             stream_failed = True
             logger.info("Streaming cancelled by client; reply was not saved")
@@ -307,9 +315,10 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         except Exception:
             logger.exception("Error during streaming; reply was not saved")
             stream_failed = True
+            error_message = "The response stream failed. Please try again."
         finally:
             full_reply = "".join(chunks)
-            if stream_failed and created_new_conversation and not full_reply.strip():
+            if stream_failed and created_new_conversation:
                 try:
                     async with AsyncSessionLocal() as session:
                         stale = await session.get(Conversation, conversation_id)
@@ -336,9 +345,20 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                         await session.commit()
                 except Exception:
                     logger.exception("Failed to persist streaming messages")
+                    stream_failed = True
+                    error_message = "The response was generated but could not be saved."
+
+        if stream_failed:
+            yield _stream_event("error", message=error_message or "The response stream failed.")
+            return
+        yield _stream_event("done")
 
     return StreamingResponse(
         generate(),
-        media_type="text/plain",
-        headers={"X-Conversation-Id": str(conversation_id)},
+        media_type="application/x-ndjson",
+        headers={
+            "X-Conversation-Id": str(conversation_id),
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
     )

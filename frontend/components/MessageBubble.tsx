@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentPropsWithoutRef, useId, useState } from "react";
+import { ComponentPropsWithoutRef, useEffect, useId, useState } from "react";
 import { Bot, Check, Copy, Download, ExternalLink, Link2Off, User } from "lucide-react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -9,6 +9,7 @@ import { Message } from "@/types/chat";
 interface Props {
   message: Message;
   index?: number;
+  markdownRich?: boolean;
 }
 
 type CodeProps = ComponentPropsWithoutRef<"code"> & {
@@ -62,7 +63,7 @@ function extensionForLanguage(language: string) {
   return map[language.toLowerCase()] || "txt";
 }
 
-export default function MessageBubble({ message, index = 0 }: Props) {
+export default function MessageBubble({ message, index = 0, markdownRich = true }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
   const isStopped = message.status === "stopped";
@@ -70,6 +71,15 @@ export default function MessageBubble({ message, index = 0 }: Props) {
   const [codeCopiedId, setCodeCopiedId] = useState<string | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const blockId = useId();
+
+  useEffect(() => {
+    if (!lightboxSrc) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxSrc(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxSrc]);
 
   async function handleCopy() {
     try {
@@ -258,13 +268,13 @@ export default function MessageBubble({ message, index = 0 }: Props) {
       }`}
       style={{ animationDelay: `${Math.min(index * 24, 160)}ms` }}
     >
-      <div className={`flex max-w-[92%] gap-3 md:max-w-[78%] ${isUser ? "flex-row-reverse" : ""}`}>
+      <div className={`flex max-w-[96%] gap-2.5 md:max-w-[82%] md:gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
         <div className="mt-1 shrink-0">
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-lg shadow-sm ${
+            className={`flex h-8 w-8 items-center justify-center rounded-full ${
               isUser
-                ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
-                : "bg-teal-700 text-white dark:bg-teal-500 dark:text-slate-950"
+                ? "bg-[#dce9df] text-[#315944] dark:bg-[#2d3d32] dark:text-[#b8ddc5]"
+                : "bg-[#315b49] text-white dark:bg-[#b5d9c1] dark:text-[#193c2d]"
             }`}
           >
             {isUser ? <User size={16} /> : <Bot size={17} />}
@@ -273,14 +283,14 @@ export default function MessageBubble({ message, index = 0 }: Props) {
 
         <div className="group min-w-0">
           <div
-            className={`rounded-lg px-4 py-3 shadow-sm ${
+            className={`rounded-2xl px-4 py-3 ${
               isUser
-                ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                ? "rounded-tr-md bg-[#e6efe6] text-[#1d3326] dark:bg-[#26372c] dark:text-[#e3eee5]"
                 : isError
                   ? "border border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
                   : isStopped
                     ? "border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100"
-                  : "border border-slate-200 bg-white text-slate-800 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+                  : "bg-white/80 text-slate-800 dark:bg-[#171f1a]/80 dark:text-slate-100"
             }`}
           >
             {isUser ? (
@@ -297,12 +307,14 @@ export default function MessageBubble({ message, index = 0 }: Props) {
                 )}
                 {message.content && <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>}
               </div>
-            ) : message.content ? (
+            ) : message.content && markdownRich ? (
               <div className="prose prose-sm max-w-none prose-custom dark:prose-invert prose-headings:font-semibold prose-a:no-underline hover:prose-a:underline prose-pre:m-0 prose-pre:bg-transparent prose-pre:p-0">
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {message.content}
                 </ReactMarkdown>
               </div>
+            ) : message.content ? (
+              <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
             ) : (
               <div className="flex items-center gap-3 py-2">
                 <div className="flex items-center gap-1">
@@ -323,10 +335,11 @@ export default function MessageBubble({ message, index = 0 }: Props) {
               <button
                 type="button"
                 onClick={() => void handleCopy()}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                aria-label="Copy message"
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-slate-500 transition hover:bg-white hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                aria-label={copied ? "Message copied" : "Copy message"}
               >
                 {copied ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copied ? "Copied" : "Copy"}</span>
               </button>
             ) : null}
           </div>
@@ -339,7 +352,16 @@ export default function MessageBubble({ message, index = 0 }: Props) {
           onClick={() => setLightboxSrc(null)}
           role="dialog"
           aria-modal="true"
+          aria-label="Image preview"
         >
+          <button
+            type="button"
+            onClick={() => setLightboxSrc(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+            aria-label="Close image preview"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={lightboxSrc}

@@ -9,8 +9,6 @@ import {
   Menu,
   RefreshCw,
   Search,
-  Server,
-  ServerOff,
   Settings,
 } from "lucide-react";
 import { fetchHealth, fetchModels } from "@/lib/api";
@@ -116,8 +114,8 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
   }, [models, query]);
 
   return (
-    <header className="shrink-0 border-b border-slate-200/80 bg-white/86 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/78">
-      <div className="flex min-h-16 items-center justify-between gap-4 px-4 md:px-6">
+    <header className="z-20 shrink-0 border-b border-[var(--border)]/80 bg-[var(--surface)]/85 backdrop-blur-xl">
+      <div className="flex min-h-[4.25rem] items-center justify-between gap-3 px-3.5 sm:px-5 md:px-7">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
@@ -129,15 +127,15 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
           </button>
 
           <div className="min-w-0">
-            <p className="flex items-center gap-2 text-sm font-semibold text-slate-950 dark:text-white">
-              Private workspace
-              <span className={`inline-block h-1.5 w-1.5 rounded-full ${health?.status === "ok" ? "bg-emerald-500" : "bg-rose-400"}`} />
+            <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+              Local workspace
+              <span className={`inline-block h-2 w-2 rounded-full ${health === null ? "bg-amber-400" : health.status === "ok" ? "bg-emerald-500" : "bg-rose-400"}`} />
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
               {current.family}
               {current.version ? <span className="text-slate-400 dark:text-slate-500">:{current.version}</span> : null}
               {!activeInstalled && models.length > 0 ? (
-                <span className="ml-2 text-amber-600 dark:text-amber-300">not installed</span>
+                <span className="ml-2 text-amber-700 dark:text-amber-300">not installed</span>
               ) : null}
             </p>
           </div>
@@ -149,11 +147,11 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
               type="button"
               onClick={() => setDropdownOpen((open) => !open)}
               disabled={disabled}
-              className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700"
+              className="flex h-10 max-w-[12rem] items-center gap-2 rounded-xl border border-[var(--border)] bg-white/80 px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#b7cdb9] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#456c53]"
               aria-expanded={dropdownOpen}
               aria-haspopup="listbox"
             >
-              <Cpu size={14} className="text-teal-600 dark:text-teal-300" />
+              <Cpu size={14} className="text-[#315b49] dark:text-[#b5d9c1]" />
               <span className="max-w-[9rem] truncate">{model}</span>
               <ChevronDown size={14} className={`transition ${dropdownOpen ? "rotate-180" : ""}`} />
             </button>
@@ -200,7 +198,9 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
                   </div>
                 ) : (
                   <div className="max-h-80 overflow-y-auto p-1.5" role="listbox">
-                    {filteredModels.map((candidate) => {
+                    {filteredModels.length === 0 ? (
+                      <p className="px-3 py-5 text-center text-sm text-slate-500 dark:text-slate-400">No matching models.</p>
+                    ) : filteredModels.map((candidate) => {
                       const isActive = candidate.name === model;
                       const name = splitModelName(candidate.name);
                       return (
@@ -244,15 +244,15 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
           </div>
 
           <div
-            className={`hidden h-10 items-center gap-2 rounded-lg border px-3 text-xs font-medium sm:flex ${
+            className={`hidden h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium sm:flex ${
               health?.status === "ok"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
                 : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
             }`}
             title={health?.database_connected === false ? "Database unavailable" : undefined}
           >
-            <span className={`h-2 w-2 rounded-full ${health?.status === "ok" ? "bg-emerald-500" : "bg-rose-500"}`} />
-            {health?.status === "ok" ? "Ready" : "Offline"}
+            <span className={`h-2 w-2 rounded-full ${health === null ? "bg-amber-400" : health.status === "ok" ? "bg-emerald-500" : "bg-rose-500"}`} />
+            {health === null ? "Connecting" : health.status === "ok" ? "Ready" : health.database_connected === false ? "Database issue" : "Offline"}
           </div>
 
           <button

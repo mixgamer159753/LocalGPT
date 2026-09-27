@@ -41,6 +41,7 @@ export function useConversations() {
     content: "Hi. I am LocalGPT, your private AI assistant. How can I help?",
   }]);
   const mountedRef = useRef(true);
+  const openRequestRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -53,7 +54,7 @@ export function useConversations() {
       const list = await fetchConversations();
       if (mountedRef.current) setConversations(list);
     } catch {
-      if (mountedRef.current) setConversations([]);
+      // Keep the last successful list visible during a temporary API outage.
     }
   }, []);
 
@@ -75,9 +76,11 @@ export function useConversations() {
     stopGeneration: () => void,
     welcomeMessage: { id: number; role: "user" | "assistant"; content: string }
   ) => {
+    const requestId = ++openRequestRef.current;
     stopGeneration();
     try {
       const detail = await fetchConversation(id);
+      if (requestId !== openRequestRef.current) return;
       setConversationId(detail.id);
       if (detail.model) setModel(detail.model);
       setMessages(
@@ -86,6 +89,8 @@ export function useConversations() {
           : [welcomeMessage]
       );
     } catch (error) {
+      if (requestId !== openRequestRef.current) return;
+      setConversationId(null);
       setMessages([
         welcomeMessage,
         { id: uid(), role: "assistant", content: `Could not load that conversation. ${toErrorMessage(error)}` },
@@ -115,6 +120,7 @@ export function useConversations() {
   }, []);
 
   const newChat = useCallback(() => {
+    openRequestRef.current += 1;
     setMessages([{ id: WELCOME_ID, role: "assistant", content: "Hi. I am LocalGPT, your private AI assistant. How can I help?" }]);
     setConversationId(null);
   }, []);

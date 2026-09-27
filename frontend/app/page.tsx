@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import ChatWindow from "@/components/ChatWindow";
@@ -32,17 +32,29 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
   return (
     <main className="flex h-dvh overflow-hidden bg-background text-foreground">
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm md:hidden"
+        <button
+          type="button"
+          aria-label="Close conversation menu"
+          className="fixed inset-0 z-30 cursor-default bg-slate-950/35 backdrop-blur-[2px] md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       <Sidebar
         open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         onNewChat={() => {
           newChat();
           setSidebarOpen(false);
@@ -59,7 +71,7 @@ export default function Home() {
         onTogglePin={togglePin}
       />
 
-      <section className="relative z-10 flex min-w-0 flex-1 flex-col">
+      <section className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <Header
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           model={model}
@@ -81,6 +93,7 @@ export default function Home() {
         <ChatWindow
           messages={messages}
           loading={loading}
+          markdownRich={settings.markdownRich}
           onContinue={continueMessage}
           onSend={sendMessage}
         />

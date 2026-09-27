@@ -2,26 +2,28 @@
 @plugin "@tailwindcss/typography";
 
 :root {
-  --background: #f6f7f9;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-muted: #eef2f7;
-  --border: #d9e0ea;
-  --muted: #64748b;
-  --accent: #0f766e;
-  --accent-strong: #115e59;
+  color-scheme: light;
+  --background: #f5f6f2;
+  --foreground: #17231f;
+  --surface: #fffefa;
+  --surface-muted: #edf1ec;
+  --border: #dfe5df;
+  --muted: #68766f;
+  --accent: #2e6c58;
+  --accent-strong: #205542;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b0f14;
-    --foreground: #e5edf6;
-    --surface: #111822;
-    --surface-muted: #17202b;
-    --border: #243244;
-    --muted: #8b9aad;
-    --accent: #2dd4bf;
-    --accent-strong: #5eead4;
+    color-scheme: dark;
+    --background: #101713;
+    --foreground: #e9eee8;
+    --surface: #171f1a;
+    --surface-muted: #202b24;
+    --border: #2b3930;
+    --muted: #9aa99d;
+    --accent: #79b99b;
+    --accent-strong: #9bd4b7;
   }
 }
 
@@ -43,7 +45,7 @@ body {
 
 body {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 247, 249, 0.94)),
+    radial-gradient(ellipse at 50% -28%, rgba(91, 143, 112, 0.10), transparent 52%),
     var(--background);
   color: var(--foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -52,7 +54,7 @@ body {
 @media (prefers-color-scheme: dark) {
   body {
     background:
-      linear-gradient(180deg, rgba(15, 23, 42, 0.24), rgba(11, 15, 20, 0.96)),
+      radial-gradient(ellipse at 50% -28%, rgba(89, 155, 119, 0.12), transparent 52%),
       var(--background);
   }
 }
@@ -68,6 +70,21 @@ textarea:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 *::-webkit-scrollbar {
@@ -188,23 +205,4 @@ input:focus-visible {
 
 .prose-custom strong {
   font-weight: 700;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--muted) 40%, transparent);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--muted) 60%, transparent);
 }

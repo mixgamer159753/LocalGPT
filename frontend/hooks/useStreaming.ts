@@ -59,7 +59,7 @@ export function useStreaming(opts: UseStreamingOptions) {
     abortRef.current?.abort();
   }, []);
 
-  const doStream = useCallback(async (apiMessages: { role: "user" | "assistant"; content: ApiContent }[], aiId: number, startedWithoutConversation: boolean, persistUserMessage = true) => {
+  const doStream = useCallback(async (apiMessages: { role: "user" | "assistant"; content: ApiContent }[], aiId: number, startedWithoutConversation: boolean) => {
     const controller = new AbortController();
     const streamId = ++streamIdRef.current;
     abortRef.current = controller;
@@ -84,7 +84,6 @@ export function useStreaming(opts: UseStreamingOptions) {
           response_style: settingsRef.current.systemStyle,
           web_search_enabled: settingsRef.current.webSearch,
           conversation_id: conversationIdRef.current,
-          persist_user_message: persistUserMessage,
         }),
       });
 
@@ -224,39 +223,5 @@ export function useStreaming(opts: UseStreamingOptions) {
     await doStream(apiMessages, aiId, conversationIdRef.current === null);
   }, [doStream, stopGeneration, conversationIdRef, setMessages]);
 
-  const continueMessage = useCallback(async (aiMessageId: number, currentMessages: Message[]) => {
-    if (generatingRef.current) return;
-
-    const idx = currentMessages.findIndex((m) => m.id === aiMessageId);
-    if (idx < 0) return;
-
-    const partial = currentMessages[idx].content;
-    if (!partial || partial.startsWith("Error:")) return;
-
-    const lastUser = [...currentMessages.slice(0, idx)].reverse().find((m) => m.role === "user");
-    if (!lastUser) return;
-
-    stopGeneration();
-    generatingRef.current = true;
-    setIsGenerating(true);
-
-    const continuePrompt = `Continue from where the previous response stopped. Do not repeat anything already written. Continue from exactly where it left off. Previous response ended with:\n\n${partial.slice(-500)}`;
-    const aiId = uid();
-
-    setMessages((prev) => [...prev, { id: aiId, role: "assistant", content: "", status: "streaming", statusText: "Thinking..." }]);
-    const lastUserContent: ApiContent = lastUser.images?.length
-      ? [
-          ...(lastUser.content ? [{ type: "text" as const, text: lastUser.content }] : []),
-          ...lastUser.images.map((url) => ({ type: "image_url" as const, image_url: { url } })),
-        ]
-      : lastUser.content;
-    await doStream(
-      [{ role: "user", content: lastUserContent }, { role: "assistant", content: partial }, { role: "user", content: continuePrompt }],
-      aiId,
-      false,
-      false,
-    );
-  }, [doStream, stopGeneration, setMessages]);
-
-  return { sendMessage, continueMessage, stopGeneration, generating: generatingRef, isGenerating };
+  return { sendMessage, stopGeneration, generating: generatingRef, isGenerating };
 }

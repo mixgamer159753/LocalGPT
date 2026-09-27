@@ -14,7 +14,6 @@ export default function Home() {
   const {
     messages,
     sendMessage,
-    continueMessage,
     stopGeneration,
     loading,
     newChat,
@@ -95,7 +94,6 @@ export default function Home() {
           messages={messages}
           loading={loading}
           markdownRich={settings.markdownRich}
-          onContinue={continueMessage}
           onSend={sendMessage}
         />
 

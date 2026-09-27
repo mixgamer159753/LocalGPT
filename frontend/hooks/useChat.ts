@@ -53,15 +53,11 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
     refreshConversations,
   });
 
-  const { sendMessage: streamSend, continueMessage: streamContinue, stopGeneration, isGenerating } = streaming;
+  const { sendMessage: streamSend, stopGeneration, isGenerating } = streaming;
 
   const sendMessage = useCallback(async (text: string, images?: string[]) => {
     await streamSend(text, images, messages, WELCOME_ID);
   }, [streamSend, messages]);
-
-  const continueMessage = useCallback(async (aiMessageId: number) => {
-    await streamContinue(aiMessageId, messages);
-  }, [streamContinue, messages]);
 
   const newChat = useCallback(() => {
     stopGeneration();
@@ -83,7 +79,6 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
   return {
     messages,
     sendMessage,
-    continueMessage,
     stopGeneration,
     loading: isGenerating,
     newChat,

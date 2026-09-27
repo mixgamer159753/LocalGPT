@@ -316,8 +316,8 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
             ) : message.content ? (
               <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
             ) : (
-              <div className="flex items-center gap-3 py-2">
-                <div className="flex items-center gap-1">
+              <div role="status" aria-live="polite" className="flex items-center gap-3 py-2">
+                <div aria-hidden="true" className="flex items-center gap-1">
                   <span className="typing-dot" />
                   <span className="typing-dot" />
                   <span className="typing-dot" />

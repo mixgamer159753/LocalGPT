@@ -8,7 +8,6 @@ import MessageBubble from "./MessageBubble";
 interface Props {
   messages: Message[];
   loading: boolean;
-  onContinue?: (messageId: number) => void;
   onSend?: (text: string) => void;
   markdownRich?: boolean;
 }
@@ -37,7 +36,7 @@ function formatDateSeparator(dateStr: string) {
   return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
-export default function ChatWindow({ messages, loading, onContinue, onSend, markdownRich = true }: Props) {
+export default function ChatWindow({ messages, loading, onSend, markdownRich = true }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -68,26 +67,6 @@ export default function ChatWindow({ messages, loading, onContinue, onSend, mark
     handler();
     return () => el.removeEventListener("scroll", handler);
   }, []);
-
-  const lastAssistantId = (() => {
-    if (loading || !onContinue) {
-      return null;
-    }
-
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const message = messages[i];
-      if (
-        message.role === "assistant" &&
-        message.id !== -1 &&
-        message.content.trim() &&
-        !message.content.startsWith("Error:")
-      ) {
-        return message.id;
-      }
-    }
-
-    return null;
-  })();
 
   if (messages.length === 1 && messages[0].id === -1) {
     return (
@@ -154,19 +133,6 @@ export default function ChatWindow({ messages, loading, onContinue, onSend, mark
             </div>
           );
         })}
-
-        {!loading && lastAssistantId !== null ? (
-          <div className="my-6 flex justify-center animate-message-in">
-            <button
-              type="button"
-              onClick={() => onContinue?.(lastAssistantId)}
-              className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-[#b7cdb9] hover:text-[#203d2d] dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-[#456c53] dark:hover:text-white"
-            >
-              <ArrowRight size={15} />
-              Continue generation
-            </button>
-          </div>
-        ) : null}
 
         <div ref={bottomRef} />
       </div>

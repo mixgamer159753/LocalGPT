@@ -150,6 +150,22 @@ NEXT_PUBLIC_API_URL=http://192.168.1.20:8000
 NEXT_PUBLIC_BACKEND_PORT=8000
 ```
 
+### Vercel frontend with a local backend
+
+When the frontend is hosted on Vercel and the backend runs on your PC, expose
+the backend through a running HTTPS tunnel such as ngrok. In the Vercel
+project's **Settings → Environment Variables**, add `NEXT_PUBLIC_API_URL` as a
+**Config** value for Production. Set it to the tunnel's origin only, such as
+`https://your-tunnel.ngrok-free.app` (do not append `/api` or `/v1`). This
+`NEXT_PUBLIC_` value is included in browser code, so it must not contain
+secrets. Save the variable and redeploy the frontend.
+
+Set the backend's `CORS_ORIGINS` to include the Vercel site origin, for example
+`https://local-gpt-three.vercel.app`, along with local origins if needed. Keep
+the backend and tunnel running while using the Vercel site. Free tunnel URLs
+can change; if yours changes, update `NEXT_PUBLIC_API_URL` in Vercel and
+redeploy.
+
 ## API Overview
 
 | Method | Path | Purpose |

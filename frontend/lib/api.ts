@@ -20,10 +20,15 @@ export function getApiBaseUrl() {
 
 export const API_BASE_URL = getApiBaseUrl();
 export const STREAM_URL = `${API_BASE_URL}/api/chat/stream`;
+const usesNgrok = API_BASE_URL.toLowerCase().includes("ngrok");
+export const API_HEADERS: Record<string, string> = usesNgrok
+  ? { "ngrok-skip-browser-warning": "true" }
+  : {};
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   timeout: 15000,
+  headers: API_HEADERS,
 });
 
 api.interceptors.response.use(undefined, async (error) => {

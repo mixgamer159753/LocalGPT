@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState } from "react";
-import { STREAM_URL } from "@/lib/api";
+import { API_HEADERS, STREAM_URL } from "@/lib/api";
 import { type ApiContent, type ApiContentPart, Message, UserSettings } from "@/types/chat";
 
 const STREAM_TIMEOUT_MS = 300_000;
@@ -73,6 +73,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/x-ndjson",
+          ...API_HEADERS,
         },
         signal: controller.signal,
         body: JSON.stringify({

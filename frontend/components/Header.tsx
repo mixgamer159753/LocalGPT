@@ -21,7 +21,8 @@ interface Props {
 }
 
 function splitModelName(name: string) {
-  const [family, ...rest] = name.split(":");
+  const displayName = name.slice(name.lastIndexOf("/") + 1);
+  const [family, ...rest] = displayName.split(":");
   return { family, version: rest.join(":") };
 }
 
@@ -153,12 +154,14 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
               type="button"
               onClick={() => setDropdownOpen((open) => !open)}
               disabled={disabled}
-              className="flex h-10 max-w-[12rem] items-center gap-2 rounded-xl border border-[var(--border)] bg-white/80 px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#b7cdb9] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#456c53]"
+              className="flex h-10 max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-[var(--border)] bg-white/80 px-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#b7cdb9] hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 sm:max-w-[22rem] dark:bg-slate-900 dark:text-slate-200 dark:hover:border-[#456c53]"
               aria-expanded={dropdownOpen}
               aria-haspopup="listbox"
             >
               <Cpu size={14} className="text-[#315b49] dark:text-[#b5d9c1]" />
-              <span className="max-w-[9rem] truncate">{model}</span>
+              <span className="min-w-0 truncate sm:max-w-[19rem]" title={model}>
+                {current.family}{current.version ? `:${current.version}` : ""}
+              </span>
               <ChevronDown size={14} className={`transition ${dropdownOpen ? "rotate-180" : ""}`} />
             </button>
 
@@ -229,9 +232,8 @@ export default function Header({ onToggleSidebar, model, onModelChange, disabled
                             <Cpu size={15} />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-semibold">{name.family}</span>
-                            <span className="block truncate text-xs text-slate-500 dark:text-slate-500">
-                              {name.version || candidate.name}
+                            <span className="block truncate text-sm font-semibold" title={candidate.name}>
+                              {name.family}{name.version ? `:${name.version}` : ""}
                             </span>
                             {modelMeta(candidate) ? (
                               <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-slate-600">

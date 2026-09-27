@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     response_style: Literal["balanced", "concise", "detailed"] = "balanced"
     web_search_enabled: bool = True
     conversation_id: Optional[int] = None
+    persist_user_message: bool = True
 
     @field_validator("messages")
     @classmethod

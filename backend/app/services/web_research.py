@@ -307,7 +307,15 @@ def apply_research_context(messages: list[dict], research: ResearchBundle | None
         return messages
 
     context = _format_research_context(research)
-    enriched[last_user_index]["content"] = f"{enriched[last_user_index]['content']}\n\n{context}"
+    content = enriched[last_user_index].get("content", "")
+    if isinstance(content, list):
+        # Keep image and other multimodal parts intact when adding research.
+        enriched[last_user_index]["content"] = [
+            *content,
+            {"type": "text", "text": f"\n\n{context}"},
+        ]
+    else:
+        enriched[last_user_index]["content"] = f"{content}\n\n{context}"
     return enriched
 
 

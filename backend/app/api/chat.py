@@ -302,10 +302,10 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 yield chunk
         except asyncio.CancelledError:
             stream_failed = True
-            logger.info("Streaming cancelled by client; partial reply will not be saved")
+            logger.info("Streaming cancelled by client; reply was not saved")
             raise
         except Exception:
-            logger.exception("Error during streaming, partial reply will be saved")
+            logger.exception("Error during streaming; reply was not saved")
             stream_failed = True
         finally:
             full_reply = "".join(chunks)
@@ -322,7 +322,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
             if not stream_failed and full_reply.strip():
                 try:
                     async with AsyncSessionLocal() as session:
-                        if last_user_message is not None:
+                        if last_user_message is not None and request.persist_user_message:
                             session.add(Message(
                                 conversation_id=conversation_id,
                                 role=last_user_message["role"],

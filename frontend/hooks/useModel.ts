@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const MODEL_STORAGE_KEY = "localgpt:selected-model";
-const LM_STUDIO_DEFAULT = "mradermacher/DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0";
+const DEFAULT_MODEL = "qwen3:8b";
 
-export function useModel(defaultModel = LM_STUDIO_DEFAULT) {
+export function useModel(defaultModel = DEFAULT_MODEL) {
   const [model, setModelState] = useState(defaultModel);
   const modelRef = useRef(model);
 

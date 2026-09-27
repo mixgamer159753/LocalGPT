@@ -72,6 +72,7 @@ DEFAULT_MAX_TOKENS=1536
 QWEN_MAX_TOKENS=1024
 DEBUG=false
 WEB_SEARCH_ENABLED=true
+WEB_SEARCH_ALWAYS=false
 WEB_SEARCH_CACHE_TTL=900
 WEB_SEARCH_MAX_RESULTS=6
 WEB_SEARCH_MAX_PAGES=3
@@ -83,6 +84,11 @@ news, prices, documentation, sports, finance, travel, and product comparisons,
 it searches the web, reads top results, injects source context into the local
 model prompt, and streams a subtle status update to the UI. Static questions
 continue directly through the local model.
+
+Search is selective by default. Set `WEB_SEARCH_ALWAYS=true` to search most
+messages, or disable web research in the frontend settings. Native Ollama mode
+is enabled by default; to use an OpenAI-compatible server such as LM Studio, set
+`LLM_USE_NATIVE_OLLAMA=false` and point `OLLAMA_HOST` at that server.
 
 For `qwen3:8b`, LocalGPT keeps answers faster by using a shorter default output
 limit, keeping the model warm with Ollama `keep_alive`, and adding Qwen's

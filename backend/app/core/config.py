@@ -11,15 +11,20 @@ def _get_bool(name: str, default: bool) -> bool:
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
-# LLM provider base URL. Defaults to LM Studio's OpenAI-compatible endpoint.
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:1234").rstrip("/")
-OLLAMA_CHAT_URL = os.getenv("OLLAMA_URL", f"{OLLAMA_HOST}/v1/chat/completions")
-OLLAMA_TAGS_URL = f"{OLLAMA_HOST}/v1/models"
+# Ollama is the default provider. Set LLM_USE_NATIVE_OLLAMA=false to use an
+# OpenAI-compatible endpoint such as LM Studio instead.
+LLM_USE_NATIVE_OLLAMA = _get_bool("LLM_USE_NATIVE_OLLAMA", True)
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_CHAT_URL = os.getenv(
+    "OLLAMA_URL",
+    f"{OLLAMA_HOST}/api/chat" if LLM_USE_NATIVE_OLLAMA else f"{OLLAMA_HOST}/v1/chat/completions",
+)
+OLLAMA_TAGS_URL = f"{OLLAMA_HOST}/api/tags" if LLM_USE_NATIVE_OLLAMA else f"{OLLAMA_HOST}/v1/models"
 
 BACKEND_HOST = os.getenv("BACKEND_HOST", "127.0.0.1")
 BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8000"))
 
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "llama3.1:8b")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "qwen3:8b")
 
 # Where the SQLite database lives (chat history persistence).
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./localgpt.db")
@@ -38,10 +43,9 @@ OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
 OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
 OLLAMA_NUM_THREAD = os.getenv("OLLAMA_NUM_THREAD")
 # Only used for native Ollama payload (LM Studio ignores these via OpenAI API)
-LLM_USE_NATIVE_OLLAMA = _get_bool("LLM_USE_NATIVE_OLLAMA", False)
 
 DEFAULT_MAX_TOKENS = int(os.getenv("DEFAULT_MAX_TOKENS", "1536"))
-QWEN_MAX_TOKENS = int(os.getenv("QWEN_MAX_TOKENS", "4096"))
+QWEN_MAX_TOKENS = int(os.getenv("QWEN_MAX_TOKENS", "1024"))
 
 DEBUG = _get_bool("DEBUG", False)
 
@@ -52,7 +56,7 @@ WEB_SEARCH_CACHE_TTL = int(os.getenv("WEB_SEARCH_CACHE_TTL", "900"))
 
 # When true, every query gets a web search (ignores the heuristic).
 # When false, only freshness/live/comparison terms trigger a search.
-WEB_SEARCH_ALWAYS = _get_bool("WEB_SEARCH_ALWAYS", True)
+WEB_SEARCH_ALWAYS = _get_bool("WEB_SEARCH_ALWAYS", False)
 
 # Deep search controls how many results to gather and how much page text to read.
 # Higher values = more thorough but slower.

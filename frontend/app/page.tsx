@@ -77,9 +77,10 @@ export default function Home() {
           model={model}
           disabled={loading}
           onOpenSettings={() => setSettingsOpen(true)}
-          onModelChange={(nextModel) => {
+          onModelChange={(nextModel, automatic = false) => {
             const activeConversationHasMessages = conversationId !== null && messages.some((message) => message.id !== -1);
             if (
+              !automatic &&
               activeConversationHasMessages &&
               nextModel !== model &&
               !window.confirm("Use this model for future prompts in the current conversation?")

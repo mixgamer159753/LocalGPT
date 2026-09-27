@@ -78,6 +78,10 @@ WEB_SEARCH_MAX_RESULTS=6
 WEB_SEARCH_MAX_PAGES=3
 ```
 
+For LM Studio, point `OLLAMA_HOST` at its local server (for example,
+`http://127.0.0.1:1234`) and set `LLM_USE_NATIVE_OLLAMA=false`. Set
+`DEFAULT_MODEL` to an exact model ID returned by LM Studio's `/v1/models` route.
+
 When `WEB_SEARCH_ENABLED` is true, the backend automatically decides whether the
 latest user question needs current web context. For live topics like weather,
 news, prices, documentation, sports, finance, travel, and product comparisons,

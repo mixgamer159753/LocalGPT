@@ -17,7 +17,7 @@ import { HealthInfo, ModelInfo } from "@/types/chat";
 interface Props {
   onToggleSidebar: () => void;
   model: string;
-  onModelChange: (model: string) => void;
+  onModelChange: (model: string, automatic?: boolean) => void;
   onOpenSettings: () => void;
   disabled?: boolean;
 }
@@ -47,6 +47,7 @@ function modelMeta(model: ModelInfo) {
 export default function Header({ onToggleSidebar, model, onModelChange, onOpenSettings, disabled }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [health, setHealth] = useState<HealthInfo | null>(null);
+  const [healthUnavailable, setHealthUnavailable] = useState(false);
   const [llmOnline, setLlmOnline] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -71,9 +72,10 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
     try {
       const nextHealth = await fetchHealth();
       setHealth(nextHealth);
+      setHealthUnavailable(false);
       setLlmOnline(nextHealth.ollama_reachable);
     } catch {
-      setHealth({ status: "degraded", ollama_reachable: false, database_connected: false });
+      setHealthUnavailable(true);
       setLlmOnline(false);
     }
   }, []);
@@ -103,6 +105,12 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
 
   const current = splitModelName(model);
   const activeInstalled = models.some((candidate) => candidate.name === model);
+
+  useEffect(() => {
+    if (models.length > 0 && !activeInstalled) {
+      onModelChange(models[0].name, true);
+    }
+  }, [activeInstalled, models, onModelChange]);
   const filteredModels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -249,10 +257,10 @@ export default function Header({ onToggleSidebar, model, onModelChange, onOpenSe
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
                 : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
             }`}
-            title={health?.database_connected === false ? "Database unavailable" : undefined}
+            title={healthUnavailable ? "The backend health check failed" : health?.database_connected === false ? health.database_detail || "Database unavailable" : health?.ollama_reachable === false ? health.ollama_detail || "Model provider unavailable" : undefined}
           >
-            <span className={`h-2 w-2 rounded-full ${health === null ? "bg-amber-400" : health.status === "ok" ? "bg-emerald-500" : "bg-rose-500"}`} />
-            {health === null ? "Connecting" : health.status === "ok" ? "Ready" : health.database_connected === false ? "Database issue" : "Offline"}
+            <span className={`h-2 w-2 rounded-full ${healthUnavailable || health?.status === "degraded" ? "bg-rose-500" : health === null ? "bg-amber-400" : "bg-emerald-500"}`} />
+            {healthUnavailable ? "Backend offline" : health === null ? "Connecting" : health.database_connected === false ? "Database issue" : health.ollama_reachable === false ? "Model offline" : "Ready"}
           </div>
 
           <button

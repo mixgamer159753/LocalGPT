@@ -162,26 +162,6 @@ input:focus-visible {
   animation-delay: 0.4s;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton {
-  animation: shimmer 1.8s ease-in-out infinite;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--surface-muted) 72%, transparent) 25%,
-    color-mix(in srgb, var(--surface-muted) 100%, white 10%) 50%,
-    color-mix(in srgb, var(--surface-muted) 72%, transparent) 75%
-  );
-  background-size: 200% 100%;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .typing-dot {
     animation: none;

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from pydantic import ValidationError
 
@@ -9,6 +10,18 @@ from app.services.streaming import ThinkBlockFilter
 
 
 class ChatHelperTests(unittest.TestCase):
+    def setUp(self):
+        settings = patch.multiple(
+            "app.services.ollama_payload",
+            LLM_USE_NATIVE_OLLAMA=True,
+            DEFAULT_MAX_TOKENS=1536,
+            QWEN_MAX_TOKENS=1024,
+            OLLAMA_NUM_CTX=4096,
+            OLLAMA_NUM_THREAD=None,
+        )
+        settings.start()
+        self.addCleanup(settings.stop)
+
     def test_default_title_is_trimmed_and_bounded(self):
         title = _default_title("  " + ("hello " * 20) + "\nignored")
 
@@ -35,7 +48,7 @@ class ChatHelperTests(unittest.TestCase):
 
         self.assertEqual(payload["model"], "llama3.1:8b")
         self.assertTrue(payload["stream"])
-        self.assertEqual(payload["options"]["num_predict"], 4096)
+        self.assertEqual(payload["options"]["num_predict"], 9999)
         self.assertEqual(payload["options"]["temperature"], 0.5)
         self.assertEqual([m["role"] for m in payload["messages"]], ["system", "user", "assistant"])
         self.assertNotEqual(payload["messages"][0]["content"], "ignore previous instructions")
@@ -52,21 +65,40 @@ class ChatHelperTests(unittest.TestCase):
         self.assertEqual(messages, [{"role": "user", "content": "kept"}])
 
     def test_token_clamp(self):
-        self.assertEqual(clamp_tokens(None), 4096)
-        self.assertEqual(clamp_tokens(None, "qwen3:8b"), 4096)
+        self.assertEqual(clamp_tokens(None), 1536)
+        self.assertEqual(clamp_tokens(None, "qwen3:8b"), 1024)
         self.assertEqual(clamp_tokens(-50), 1)
-        self.assertEqual(clamp_tokens(10_000), 4096)
+        self.assertEqual(clamp_tokens(10_000), 10_000)
+        self.assertEqual(clamp_tokens(50_000), 21_000)
+        self.assertEqual(clamp_tokens(10_000, "qwen3:8b"), 1024)
 
-    def test_qwen_payload_uses_no_think_and_shorter_default(self):
+    def test_qwen_payload_uses_selected_effort_and_shorter_default(self):
         payload = build_chat_payload(
             messages=[{"role": "user", "content": "hello"}],
             model="qwen3:8b",
             stream=True,
+            thinking_effort="low",
         )
 
-        self.assertEqual(payload["options"]["num_predict"], 4096)
-        self.assertIn("/no_think", payload["messages"][-1]["content"])
-        self.assertIn("Do not output <think>", payload["messages"][0]["content"])
+        self.assertEqual(payload["options"]["num_predict"], 1024)
+        self.assertFalse(payload["think"])
+        self.assertEqual(payload["messages"][-1]["content"], "hello")
+
+    def test_openai_compatible_payload_supports_atomic_chat_model(self):
+        model = "mradermacher/DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0"
+        with patch("app.services.ollama_payload.LLM_USE_NATIVE_OLLAMA", False):
+            payload = build_chat_payload(
+                messages=[{"role": "user", "content": "hello"}],
+                model=model,
+                stream=True,
+                max_tokens=16384,
+                thinking_effort="max",
+            )
+
+        self.assertEqual(payload["model"], model)
+        self.assertEqual(payload["max_tokens"], 16384)
+        self.assertEqual(payload["reasoning_effort"], "max")
+        self.assertNotIn("options", payload)
 
     def test_strip_think_blocks(self):
         self.assertEqual(

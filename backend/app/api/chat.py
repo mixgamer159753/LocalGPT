@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import func
-from app.database.database import get_db, AsyncSessionLocal, engine
+from app.database.database import get_db, AsyncSessionLocal
 from app.database.models import Conversation, Message
 from app.schemas.chat import (
     ChatRequest,

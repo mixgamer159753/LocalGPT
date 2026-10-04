@@ -28,7 +28,7 @@ export function describeLanguage(language: string) {
   return { label, filename: extension === "dockerfile" ? "Dockerfile" : `snippet.${extension}` };
 }
 
-export interface CodeToken {
+interface CodeToken {
   text: string;
   className?: string;
 }

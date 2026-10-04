@@ -1,12 +1,7 @@
-import logging
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Memory
-
-logger = logging.getLogger("localgpt.memory")
-
 
 async def get_all_memories(db: AsyncSession) -> list[dict]:
     result = await db.execute(select(Memory).order_by(Memory.key))

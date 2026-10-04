@@ -70,11 +70,6 @@ def sanitize_messages(messages: list[dict]) -> list[dict]:
     return result
 
 
-def optimize_messages_for_model(messages: list[dict], model: str) -> list[dict]:
-    sanitized = sanitize_messages(messages)
-    return sanitized
-
-
 def strip_think_blocks(content: str) -> str:
     return re.sub(r"<think>.*?</think>\s*", "", content, flags=re.IGNORECASE | re.DOTALL)
 
@@ -110,7 +105,7 @@ def build_chat_payload(
 
         payload = {
             "model": model,
-            "messages": [{"role": "system", "content": system_prompt}] + optimize_messages_for_model(safe_messages, model),
+            "messages": [{"role": "system", "content": system_prompt}] + safe_messages,
             "stream": stream,
             "options": options,
             "think": effort != "low",

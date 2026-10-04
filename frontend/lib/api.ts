@@ -3,7 +3,7 @@ import { Conversation, ConversationDetail, HealthInfo, ModelInfo } from "@/types
 
 const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || "8000";
 
-export function getApiBaseUrl() {
+function getApiBaseUrl() {
   // Hosted frontends need a public backend origin (for example, an HTTPS tunnel).
   // NEXT_PUBLIC_ values are shipped to browsers, so this must never hold a secret.
   const configured = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
@@ -18,7 +18,7 @@ export function getApiBaseUrl() {
   return `http://127.0.0.1:${BACKEND_PORT}`;
 }
 
-export const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getApiBaseUrl();
 export const STREAM_URL = `${API_BASE_URL}/api/chat/stream`;
 const usesNgrok = API_BASE_URL.toLowerCase().includes("ngrok");
 export const API_HEADERS: Record<string, string> = usesNgrok
@@ -62,11 +62,6 @@ export async function fetchConversation(id: number): Promise<ConversationDetail>
   return data;
 }
 
-export async function createConversation(model?: string): Promise<Conversation> {
-  const { data } = await api.post<Conversation>("/conversations", { model });
-  return data;
-}
-
 export async function updateConversationTitle(id: number, title: string): Promise<Conversation> {
   const { data } = await api.patch<Conversation>(`/conversations/${id}`, { title });
   return data;
@@ -75,21 +70,3 @@ export async function updateConversationTitle(id: number, title: string): Promis
 export async function deleteConversation(id: number): Promise<void> {
   await api.delete(`/conversations/${id}`);
 }
-
-export interface Memory { id: number; key: string; value: string; created_at: string; }
-
-export async function fetchMemories(): Promise<Memory[]> {
-  const { data } = await api.get<Memory[]>("/memories");
-  return data;
-}
-
-export async function addMemory(key: string, value: string): Promise<Memory> {
-  const { data } = await api.post<Memory>("/memories", { key, value });
-  return data;
-}
-
-export async function deleteMemory(id: number): Promise<void> {
-  await api.delete(`/memories/${id}`);
-}
-
-export default api;

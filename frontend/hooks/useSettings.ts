@@ -53,9 +53,5 @@ export function useSettings() {
     window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
   }, []);
 
-  const resetSettings = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
-  }, [setSettings]);
-
-  return { settings, setSettings, resetSettings };
+  return { settings, setSettings };
 }

@@ -90,7 +90,7 @@ model prompt, and streams a subtle status update to the UI. Static questions
 continue directly through the local model.
 
 Search is selective by default. Set `WEB_SEARCH_ALWAYS=true` to search most
-messages, or disable web research in the frontend settings. Native Ollama mode
+messages, or set `WEB_SEARCH_ENABLED=false` to disable web research. Native Ollama mode
 is enabled by default; to use an OpenAI-compatible server such as LM Studio, set
 `LLM_USE_NATIVE_OLLAMA=false` and point `OLLAMA_HOST` at that server.
 

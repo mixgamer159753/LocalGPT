@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from app.services.web_research import (
     ReadableHtmlParser,
@@ -12,13 +13,25 @@ from app.services.web_research import (
 
 
 class WebResearchTests(unittest.TestCase):
+    def setUp(self):
+        settings = patch.multiple(
+            "app.services.web_research",
+            WEB_SEARCH_ENABLED=True,
+            WEB_SEARCH_ALWAYS=False,
+        )
+        settings.start()
+        self.addCleanup(settings.stop)
+
     def test_does_not_search_date_only_query(self):
         decision = decide_search([{"role": "user", "content": "What is the date today?"}])
 
         self.assertIsNone(decision)
 
     def test_searches_with_always_mode(self):
-        decision = decide_search([{"role": "user", "content": "What are the latest developments in AI?"}])
+        messages = [{"role": "user", "content": "What shaped the culture of ancient Rome?"}]
+        self.assertIsNone(decide_search(messages))
+        with patch("app.services.web_research.WEB_SEARCH_ALWAYS", True):
+            decision = decide_search(messages)
 
         self.assertIsNotNone(decision)
         self.assertTrue(decision.needs_search)

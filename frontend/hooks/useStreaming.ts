@@ -175,7 +175,7 @@ export function useStreaming(opts: UseStreamingOptions) {
           setConversationId(null);
           conversationIdRef.current = null;
         }
-        setMessages((prev) => prev.map((m) => m.id === aiId ? { ...m, content: aiText || "Generation stopped.", status: aiText ? "stopped" : "stopped", statusText: undefined } : m));
+        setMessages((prev) => prev.map((m) => m.id === aiId ? { ...m, content: aiText || "Generation stopped.", status: "stopped", statusText: undefined } : m));
         return;
       }
       const msg = toErrorMessage(error);
@@ -224,5 +224,5 @@ export function useStreaming(opts: UseStreamingOptions) {
     await doStream(apiMessages, aiId, conversationIdRef.current === null);
   }, [doStream, stopGeneration, conversationIdRef, setMessages]);
 
-  return { sendMessage, stopGeneration, generating: generatingRef, isGenerating };
+  return { sendMessage, stopGeneration, isGenerating };
 }

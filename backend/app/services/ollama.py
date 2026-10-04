@@ -13,11 +13,11 @@ from app.core.config import (
 )
 from app.services.ollama_payload import build_chat_payload, strip_think_blocks
 
-logger = logging.getLogger("localgpt.ollama")
+logger = logging.getLogger("localgpt.provider")
 
 
 class OllamaUnavailableError(Exception):
-    """Raised when Ollama can't be reached or returns an error."""
+    """Legacy exception name for model-server connection and response errors."""
 
 
 class OllamaService:
@@ -81,23 +81,23 @@ class OllamaService:
             )
             response.raise_for_status()
         except requests.exceptions.ConnectionError as exc:
-            logger.error("Could not connect to Ollama at %s", OLLAMA_CHAT_URL)
+            logger.error("Could not connect to model server at %s", OLLAMA_CHAT_URL)
             raise OllamaUnavailableError(
-                f"Could not reach Ollama at {OLLAMA_CHAT_URL}. Is it running?"
+                f"Could not reach the model server at {OLLAMA_CHAT_URL}. Is its API running?"
             ) from exc
         except requests.exceptions.Timeout as exc:
-            raise OllamaUnavailableError("Ollama timed out while generating a response.") from exc
+            raise OllamaUnavailableError("The model server timed out while generating a response.") from exc
         except requests.exceptions.HTTPError as exc:
             detail = exc.response.text if exc.response is not None else str(exc)
             # Sanitize image-related errors
             if "image" in detail.lower() or "does not support" in detail.lower():
                 detail = "The model cannot process images. Text-only messages only."
-            raise OllamaUnavailableError(f"Ollama returned an error: {detail}") from exc
+            raise OllamaUnavailableError(f"The model server returned an error: {detail}") from exc
 
         try:
             data = response.json()
         except (json.JSONDecodeError, requests.exceptions.JSONDecodeError) as exc:
-            raise OllamaUnavailableError("Ollama returned invalid JSON.") from exc
+            raise OllamaUnavailableError("The model server returned invalid JSON.") from exc
 
         try:
             if LLM_USE_NATIVE_OLLAMA:
@@ -114,15 +114,15 @@ class OllamaService:
             response.raise_for_status()
         except requests.exceptions.ConnectionError as exc:
             raise OllamaUnavailableError(
-                f"Could not reach Ollama at {OLLAMA_TAGS_URL}. Is it running?"
+                f"Could not reach the model server at {OLLAMA_TAGS_URL}. Is its API running?"
             ) from exc
         except requests.exceptions.RequestException as exc:
-            raise OllamaUnavailableError(f"Ollama returned an error: {exc}") from exc
+            raise OllamaUnavailableError(f"The model server returned an error: {exc}") from exc
 
         try:
             data = response.json()
         except (json.JSONDecodeError, requests.exceptions.JSONDecodeError) as exc:
-            raise OllamaUnavailableError("Ollama returned invalid JSON for model list.") from exc
+            raise OllamaUnavailableError("The model server returned invalid JSON for the model list.") from exc
 
         if LLM_USE_NATIVE_OLLAMA:
             return data.get("models", [])

@@ -2,7 +2,8 @@
 
 Next.js app router frontend for LocalGPT. It provides the chat workspace,
 conversation sidebar, model picker, streaming message display, empty states, and
-responsive layout.
+responsive layout. Model generation is provided by Atomic Chat through the
+FastAPI backend.
 
 ## Scripts
 
@@ -12,5 +13,12 @@ npm run lint
 npm run build
 ```
 
-Set `NEXT_PUBLIC_API_URL` when the FastAPI backend is not running at
-`http://127.0.0.1:8000`.
+Copy `.env.local.example` to `.env.local` for a new installation. With a blank
+`NEXT_PUBLIC_API_URL`, the browser connects to its current hostname on backend
+port `8000`. Set an explicit API origin when FastAPI is hosted elsewhere.
+
+`NEXT_PUBLIC_API_URL` points to FastAPI, without `/api` or `/v1`. Atomic Chat's
+`http://127.0.0.1:1337/v1` address belongs in the backend provider configuration.
+
+See the [project README](../README.md) for installation, Atomic Chat configuration,
+LAN access, and Vercel deployment.

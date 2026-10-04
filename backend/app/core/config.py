@@ -11,10 +11,10 @@ def _get_bool(name: str, default: bool) -> bool:
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
-# Ollama is the default provider. Set LLM_USE_NATIVE_OLLAMA=false to use an
-# OpenAI-compatible endpoint such as LM Studio instead.
-LLM_USE_NATIVE_OLLAMA = _get_bool("LLM_USE_NATIVE_OLLAMA", True)
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+# Atomic Chat's OpenAI-compatible API is the default. The legacy variable names
+# are retained for existing installations and optional native Ollama support.
+LLM_USE_NATIVE_OLLAMA = _get_bool("LLM_USE_NATIVE_OLLAMA", False)
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:1337").rstrip("/")
 OLLAMA_CHAT_URL = os.getenv(
     "OLLAMA_URL",
     f"{OLLAMA_HOST}/api/chat" if LLM_USE_NATIVE_OLLAMA else f"{OLLAMA_HOST}/v1/chat/completions",
@@ -32,11 +32,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./localgpt.db")
 # Comma-separated list of allowed frontend origins for CORS.
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
     if origin.strip()
 ]
 
-# Timeouts (seconds) for talking to Ollama.
+# Timeouts (seconds) for talking to the model server.
 OLLAMA_CONNECT_TIMEOUT = float(os.getenv("OLLAMA_CONNECT_TIMEOUT", "10"))
 OLLAMA_READ_TIMEOUT = float(os.getenv("OLLAMA_READ_TIMEOUT", "300"))
 OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "10m")
@@ -54,7 +54,7 @@ DEBUG = _get_bool("DEBUG", False)
 WEB_SEARCH_ENABLED = _get_bool("WEB_SEARCH_ENABLED", True)
 WEB_SEARCH_CACHE_TTL = int(os.getenv("WEB_SEARCH_CACHE_TTL", "900"))
 
-# When true, every query gets a web search (ignores the heuristic).
+# When true, eligible queries get a web search after trivial/directive filters.
 # When false, only freshness/live/comparison terms trigger a search.
 WEB_SEARCH_ALWAYS = _get_bool("WEB_SEARCH_ALWAYS", False)
 

@@ -2,11 +2,11 @@
 
 **A local AI workspace for conversations, research, and code.**
 
-LocalGPT connects a clean chat interface to a model running on your computer. Use Atomic Chat, Ollama, or an OpenAI-compatible server such as LM Studio, with conversation history stored in SQLite.
+LocalGPT is a chat frontend and FastAPI backend connected to **Atomic Chat's local API**. Atomic Chat runs the model on your computer, and LocalGPT stores conversation history in SQLite.
 
 Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI · SQLAlchemy**.
 
-[Getting started](#getting-started) · [Model providers](#model-providers) · [Configuration](#configuration) · [Deployment](#deployment) · [Troubleshooting](#troubleshooting) · [Development](#development)
+[Getting started](#getting-started) · [Atomic Chat integration](#atomic-chat-integration) · [Configuration](#configuration) · [Deployment](#deployment) · [Troubleshooting](#troubleshooting) · [Development](#development)
 
 ## Features
 
@@ -23,7 +23,7 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 ```mermaid
 flowchart LR
     UI["Browser · Next.js"] --> API["Backend · FastAPI"]
-    API --> LLM["Local model server"]
+    API --> LLM["Atomic Chat · DeepSeek model"]
     API --> DB[("SQLite · history and memories")]
     API -. "Optional research" .-> WEB["Search providers and websites"]
 ```
@@ -36,7 +36,9 @@ There are three separate services. With Atomic Chat, their usual addresses are:
 | Backend | `http://127.0.0.1:8000` | Conversations, research, and model requests |
 | Atomic Chat API | `http://127.0.0.1:1337/v1` | Model discovery and generation |
 
-The frontend connects to the **FastAPI backend**. The backend connects to **Atomic Chat or Ollama**.
+The frontend connects to the **FastAPI backend**. The backend connects to **Atomic Chat** using its OpenAI-compatible API.
+
+The project's current local configuration uses `mradermacher/DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0`, a `16384` token output budget, and `WEB_SEARCH_ENABLED=false`. Web research is implemented but disabled in this installation. A fresh installation uses the defaults documented below until its environment file overrides them.
 
 ## Getting started
 
@@ -45,7 +47,7 @@ The frontend connects to the **FastAPI backend**. The backend connects to **Atom
 - Node.js **20.9 or newer** and npm.
 - Python **3.10 or newer**.
 - Git, if you are cloning the repository.
-- A running model server with a model loaded or installed.
+- Atomic Chat with its API server running and a model loaded.
 
 The commands below use **Windows PowerShell**. When updating an existing installation, keep your current environment files.
 
@@ -134,29 +136,24 @@ npm run dev
 
 </details>
 
-## Model providers
+## Atomic Chat integration
 
-| Provider | `LLM_USE_NATIVE_OLLAMA` | `OLLAMA_HOST` | Model IDs |
-| --- | --- | --- | --- |
-| Atomic Chat | `false` | `http://127.0.0.1:1337` | Returned by `/v1/models` |
-| LM Studio | `false` | `http://127.0.0.1:1234` | Returned by `/v1/models` |
-| Ollama | `true` | `http://127.0.0.1:11434` | Returned by `/api/tags` |
+LocalGPT uses these Atomic Chat endpoints:
 
-Use the address shown by your server if it differs from these examples. Restart the backend after changing provider configuration.
+| Request | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `http://127.0.0.1:1337/v1/models` | Discover available model IDs |
+| `POST` | `http://127.0.0.1:1337/v1/chat/completions` | Generate complete or streamed responses |
 
-For Ollama, install a model first, then use native mode:
+The selected model ID is sent unchanged, including the `mradermacher/` prefix. The header shortens the display name to `DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0` for readability.
+
+Check model discovery from PowerShell while Atomic Chat's API is running:
 
 ```powershell
-ollama pull qwen3:8b
+Invoke-RestMethod http://127.0.0.1:1337/v1/models
 ```
 
-```dotenv
-LLM_USE_NATIVE_OLLAMA=true
-OLLAMA_HOST=http://127.0.0.1:11434
-DEFAULT_MODEL=
-```
-
-`qwen3:8b` is an optional Ollama example. LocalGPT discovers available models; Atomic Chat does not require this model.
+If Atomic Chat uses another port, change `OLLAMA_HOST` in `backend/.env` and restart the backend. The `OLLAMA_*` variable names, internal `ollama.py` module, and `ollama_reachable` health field are legacy names in the shared provider implementation. They do not mean this installation runs Ollama.
 
 The thinking slider offers **Low, Medium, High, and Max**. LocalGPT sends an effort instruction and provider-specific controls; actual reasoning behavior depends on the model server. Image understanding also requires a vision-capable model.
 
@@ -170,12 +167,12 @@ These are application defaults when a value is not set:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `LLM_USE_NATIVE_OLLAMA` | `true` | Native Ollama or OpenAI-compatible requests |
-| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Model server origin, without `/v1` |
+| `LLM_USE_NATIVE_OLLAMA` | `false` | Use Atomic Chat's OpenAI-compatible API |
+| `OLLAMA_HOST` | `http://127.0.0.1:1337` | Atomic Chat server origin, without `/v1` |
 | `DEFAULT_MODEL` | Empty | Preferred model ID; otherwise select an available model |
 | `BACKEND_HOST` | `127.0.0.1` | Backend bind address |
 | `BACKEND_PORT` | `8000` | Backend listening port |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed frontend origins |
+| `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated allowed frontend origins |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./localgpt.db` | Conversation and memory storage |
 | `WEB_SEARCH_ENABLED` | `true` | Enable automatic web research |
 | `WEB_SEARCH_ALWAYS` | `false` | Research most eligible prompts |
@@ -183,7 +180,7 @@ These are application defaults when a value is not set:
 | `OLLAMA_READ_TIMEOUT` | `300` | Provider read timeout in seconds |
 | `DEBUG` | `false` | Verbose backend logging |
 
-The example file includes both local frontend origins and uses smaller research limits than the application defaults.
+The example file uses smaller research limits than the application defaults. Your local `.env` overrides these defaults; for example, this installation disables web research.
 
 <details>
 <summary>Generation and research tuning</summary>
@@ -191,17 +188,13 @@ The example file includes both local frontend origins and uses smaller research 
 | Variable | Application default | Purpose |
 | --- | --- | --- |
 | `DEFAULT_MAX_TOKENS` | `1536` | Output budget when a request omits `max_tokens` |
-| `QWEN_MAX_TOKENS` | `1024` | Output cap for IDs beginning with `qwen3` |
-| `OLLAMA_NUM_CTX` | `4096` | Context window for native Ollama |
-| `OLLAMA_KEEP_ALIVE` | `10m` | How long native Ollama keeps a model loaded |
-| `OLLAMA_NUM_THREAD` | Unset | Optional native Ollama CPU thread count |
 | `WEB_SEARCH_CACHE_TTL` | `900` | Research cache lifetime in seconds |
 | `WEB_SEARCH_DEEP` | `true` | Search related queries and read source pages |
 | `WEB_SEARCH_MAX_RESULTS` | `12` | Search result limit; example file sets `6` |
 | `WEB_SEARCH_MAX_PAGES` | `6` | Source page limit; example file sets `3` |
 | `WEB_SEARCH_DEEP_QUERIES` | `3` | Related query limit |
 
-The frontend requests up to `16384` output tokens by default. Provider limits still apply. Native Ollama context and keep-alive options do not apply to Atomic Chat or LM Studio.
+The frontend requests up to `16384` output tokens by default. Atomic Chat and model limits still apply. Configure model loading, context size, and hardware options in Atomic Chat. The backend's legacy native Ollama options are not sent in Atomic Chat mode.
 
 Web research uses `ddgs` for search. Optional `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` enable Google Custom Search. Set `WEB_SEARCH_ENABLED=false` to disable research. Greetings, date-only questions, and many writing or coding tasks skip research even in always mode.
 
@@ -263,14 +256,14 @@ Keep the backend, model server, and tunnel running while using the hosted app. I
 
 The API currently has no authentication. A public tunnel exposes conversation and memory endpoints; protect access before sharing the backend publicly. CORS controls browser origins and does not authenticate callers.
 
-The included `start.bat` is a Windows convenience launcher for the backend and ngrok. It currently uses a fixed checkout path and port `8000`; adjust its paths if you move the project. It does not start the frontend or model server.
+The included `start.bat` is a Windows convenience launcher for the backend and ngrok. It locates the checkout relative to the launcher and starts the backend on port `8000`. It does not start the frontend or Atomic Chat; start those separately. Use the manual commands above when you need a different backend port.
 
 ## Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
 | **Backend offline** | Open `/api/health` at the FastAPI address. Check the frontend API URL, backend process, tunnel, and allowed CORS origin. |
-| **No running session found for model** | Load the model in Atomic Chat and refresh the model list. Use its exact ID from `/v1/models`; an Ollama ID such as `qwen3:8b` is not an Atomic Chat model ID. |
+| **No running session found for model** | Load the model in Atomic Chat and refresh the model list. Use the exact ID from `/v1/models`, including its publisher prefix. |
 | **404 / Not Found** | Check the two base URLs: `OLLAMA_HOST` points to the model server; `NEXT_PUBLIC_API_URL` points to FastAPI. Neither should include `/v1` or `/api`. |
 | **Database issue** | Check `database_connected` in `/api/health`, backend logs, and write access to the database directory. Start the backend from `backend/`. |
 | **Vercel still uses an old URL** | Confirm the Production environment value, redeploy, and confirm the deployment uses the intended Git commit. |

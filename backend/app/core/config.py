@@ -52,6 +52,9 @@ DEBUG = _get_bool("DEBUG", False)
 # Optional web research layer. When enabled, the backend decides per-message
 # whether fresh web context is useful before calling the local model.
 WEB_SEARCH_ENABLED = _get_bool("WEB_SEARCH_ENABLED", True)
+WEB_SEARCH_PROVIDER = os.getenv("WEB_SEARCH_PROVIDER", "auto").strip().lower()
+# Server-only credential: never expose this through NEXT_PUBLIC_* variables.
+EXA_API_KEY = os.getenv("EXA_API_KEY", "").strip()
 WEB_SEARCH_CACHE_TTL = int(os.getenv("WEB_SEARCH_CACHE_TTL", "900"))
 
 # When true, eligible queries get a web search after trivial/directive filters.

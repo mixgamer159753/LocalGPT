@@ -14,7 +14,7 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 - **Conversation management:** search, rename, pin, and delete saved chats.
 - **Model selection:** discover available models and adjust thinking effort from the model menu.
 - **Code panels:** syntax highlighting, line numbers, copy, download, line wrapping, and an expanded view.
-- **Web research:** optional searches and source page reading before the model answers.
+- **Web research:** optional Exa searches with source highlights and citations before the local model answers.
 - **Image attachments:** send images to providers and models that support vision.
 - **Responsive design:** a charcoal interface with coral accents for desktop and mobile.
 
@@ -38,7 +38,7 @@ There are three separate services. With Atomic Chat, their usual addresses are:
 
 The frontend connects to the **FastAPI backend**. The backend connects to **Atomic Chat** using its OpenAI-compatible API.
 
-The project's current local configuration uses `mradermacher/DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0`, a `16384` token output budget, and `WEB_SEARCH_ENABLED=false`. Web research is implemented but disabled in this installation. A fresh installation uses the defaults documented below until its environment file overrides them.
+The project's current local configuration uses `mradermacher/DeepSeek-V4-Pro-Qwen3_5-4B_Q8_0`, a `16384` token output budget, and Exa web research configured through the backend environment. Exa searches require your `EXA_API_KEY`. A fresh installation uses the defaults documented below until its environment file overrides them.
 
 ## Getting started
 
@@ -175,12 +175,14 @@ These are application defaults when a value is not set:
 | `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated allowed frontend origins |
 | `DATABASE_URL` | `sqlite+aiosqlite:///./localgpt.db` | Conversation and memory storage |
 | `WEB_SEARCH_ENABLED` | `true` | Enable automatic web research |
+| `WEB_SEARCH_PROVIDER` | `auto` | Exa when a key is set; otherwise legacy Google/DDGS. Use `exa` to require Exa |
+| `EXA_API_KEY` | Empty | Server-only Exa credential |
 | `WEB_SEARCH_ALWAYS` | `false` | Research most eligible prompts |
 | `OLLAMA_CONNECT_TIMEOUT` | `10` | Provider connection timeout in seconds |
 | `OLLAMA_READ_TIMEOUT` | `300` | Provider read timeout in seconds |
 | `DEBUG` | `false` | Verbose backend logging |
 
-The example file uses smaller research limits than the application defaults. Your local `.env` overrides these defaults; for example, this installation disables web research.
+The example file uses smaller research limits than the application defaults. Your local `.env` overrides these defaults; this installation selects `WEB_SEARCH_PROVIDER=exa`.
 
 <details>
 <summary>Generation and research tuning</summary>
@@ -189,16 +191,32 @@ The example file uses smaller research limits than the application defaults. You
 | --- | --- | --- |
 | `DEFAULT_MAX_TOKENS` | `1536` | Output budget when a request omits `max_tokens` |
 | `WEB_SEARCH_CACHE_TTL` | `900` | Research cache lifetime in seconds |
-| `WEB_SEARCH_DEEP` | `true` | Search related queries and read source pages |
+| `WEB_SEARCH_DEEP` | `true` | Generate related queries for legacy search; Exa uses one query |
 | `WEB_SEARCH_MAX_RESULTS` | `12` | Search result limit; example file sets `6` |
-| `WEB_SEARCH_MAX_PAGES` | `6` | Source page limit; example file sets `3` |
+| `WEB_SEARCH_MAX_PAGES` | `6` | Sources supplied to the model; example file sets `3` |
 | `WEB_SEARCH_DEEP_QUERIES` | `3` | Related query limit |
 
 The frontend requests up to `16384` output tokens by default. Atomic Chat and model limits still apply. Configure model loading, context size, and hardware options in Atomic Chat. The backend's legacy native Ollama options are not sent in Atomic Chat mode.
 
-Web research uses `ddgs` for search. Optional `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` enable Google Custom Search. Set `WEB_SEARCH_ENABLED=false` to disable research. Greetings, date-only questions, and many writing or coding tasks skip research even in always mode.
+Exa retrieves source highlights in one request. With `WEB_SEARCH_PROVIDER=legacy`, optional `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` select Google Custom Search, otherwise `ddgs` is used. The active legacy path uses search snippets. Set `WEB_SEARCH_ENABLED=false` to disable research. Greetings, date-only questions, and many writing or coding tasks skip research even in always mode.
 
 </details>
+
+### Exa web search setup
+
+In your private `backend/.env`, set:
+
+```dotenv
+WEB_SEARCH_ENABLED=true
+WEB_SEARCH_PROVIDER=exa
+EXA_API_KEY=your-exa-api-key
+```
+
+Replace the placeholder locally with your key, or provide `EXA_API_KEY` through the backend process environment. Process environment variables take precedence over `.env`. Restart FastAPI after changing them. Keep the key out of frontend variables, Git, and chat messages.
+
+The backend calls `POST https://api.exa.ai/search` with `contents.highlights=true`, then passes source titles, URLs, and extracts to Atomic Chat. Atomic Chat still generates the answer using your selected local model. Search is automatic for eligible questions such as “What is the latest battery research?”; ordinary greetings and many coding tasks skip it. The frontend request must also allow web search.
+
+Successful results are cached for `WEB_SEARCH_CACHE_TTL` seconds. Source limits are applied locally. Exa mode does not fan out related queries or fetch source pages again. A missing key, API failure, or empty result produces a cautious-answer instruction; it does not silently switch providers. Failed searches are not cached, so the next request can recover.
 
 ### Frontend — `frontend/.env.local`
 
@@ -284,7 +302,7 @@ If needed, change `BACKEND_PORT` to `8001` and `NEXT_PUBLIC_BACKEND_PORT` to `80
 - Starting the backend from `backend/` stores chats and memories in `backend/localgpt.db` by default.
 - Selected models, pinned conversation IDs, and frontend preferences are stored in the browser's local storage.
 - The database, environment files, installed dependencies, and generated caches are excluded from Git.
-- Model inference stays on your computer when you use a local provider. Optional web research sends search queries and fetches pages from external services.
+- Model inference stays on your computer when you use a local provider. Optional web research sends search queries to external providers. Exa returns extracted source content; the API key remains on the backend.
 - Generation uses a short recent message history; older saved messages remain available in the conversation view.
 
 ## Development

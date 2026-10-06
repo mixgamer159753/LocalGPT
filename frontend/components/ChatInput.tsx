@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Send, Square, X } from "lucide-react";
+import { Globe2, ImagePlus, Send, Square, X } from "lucide-react";
+import { SearchMode } from "@/types/chat";
 
 interface Props {
   onSend: (message: string, images?: string[]) => void;
   onStop: () => void;
   disabled?: boolean;
+  searchMode: SearchMode;
+  onSearchModeChange: (mode: SearchMode) => void;
 }
 
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 3.5 * 1024 * 1024;
 const MAX_MESSAGE_LENGTH = 20_000;
 
-export default function ChatInput({ onSend, onStop, disabled }: Props) {
+export default function ChatInput({ onSend, onStop, disabled, searchMode, onSearchModeChange }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
@@ -172,7 +175,22 @@ export default function ChatInput({ onSend, onStop, disabled }: Props) {
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-500 dark:text-slate-500">
           <span>Enter to send · Shift + Enter for a new line{ text.length > 18_000 ? ` · ${text.length}/${MAX_MESSAGE_LENGTH}` : ""}</span>
-          <span>Responses run through your selected local model</span>
+          <label className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 transition ${searchMode === "off" ? "border-transparent text-slate-500" : "border-[#e58e74]/20 bg-[#e58e74]/[0.06] text-[#f0a087]"}`}>
+            <Globe2 size={13} aria-hidden="true" />
+            <span>Web</span>
+            <select
+              aria-label="Web search mode"
+              value={searchMode}
+              onChange={(event) => onSearchModeChange(event.target.value as SearchMode)}
+              disabled={disabled}
+              title="Auto searches when useful. Search uses web sources for your next question. Off keeps requests local."
+              className="cursor-pointer rounded bg-transparent py-0.5 pr-1 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-[#e58e74] disabled:cursor-not-allowed [&>option]:bg-[#191e24] [&>option]:text-slate-200"
+            >
+              <option value="auto">Auto</option>
+              <option value="always">Search</option>
+              <option value="off">Off</option>
+            </select>
+          </label>
         </div>
       </div>
     </div>

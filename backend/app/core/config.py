@@ -55,6 +55,7 @@ WEB_SEARCH_ENABLED = _get_bool("WEB_SEARCH_ENABLED", True)
 WEB_SEARCH_PROVIDER = os.getenv("WEB_SEARCH_PROVIDER", "auto").strip().lower()
 # Server-only credential: never expose this through NEXT_PUBLIC_* variables.
 EXA_API_KEY = os.getenv("EXA_API_KEY", "").strip()
+WEB_SEARCH_CONTEXT_CHARS = max(400, int(os.getenv("WEB_SEARCH_CONTEXT_CHARS", "1800")))
 WEB_SEARCH_CACHE_TTL = int(os.getenv("WEB_SEARCH_CACHE_TTL", "900"))
 
 # When true, eligible queries get a web search after trivial/directive filters.

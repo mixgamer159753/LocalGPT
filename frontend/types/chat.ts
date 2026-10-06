@@ -6,6 +6,24 @@ export interface ApiContentPart {
 
 export type ApiContent = string | ApiContentPart[];
 
+export type SearchMode = "auto" | "always" | "off";
+
+export interface ResearchSource {
+  id: number;
+  title: string;
+  url: string;
+  snippet: string;
+  published_date?: string | null;
+}
+
+export interface ResearchInfo {
+  query: string;
+  provider: string;
+  cached: boolean;
+  warning: string | null;
+  sources: ResearchSource[];
+}
+
 export interface Message {
   id: number;
   role: "user" | "assistant";
@@ -14,6 +32,9 @@ export interface Message {
   created_at?: string;
   status?: "streaming" | "complete" | "error" | "stopped";
   statusText?: string;
+  searchPhase?: "search" | "answer";
+  searchQuery?: string;
+  research?: ResearchInfo | null;
 }
 
 export interface Conversation {
@@ -30,6 +51,7 @@ export interface ConversationDetail extends Conversation {
     role: "user" | "assistant";
     content: string;
     created_at: string;
+    research?: ResearchInfo | null;
   }[];
 }
 
@@ -59,5 +81,6 @@ export interface UserSettings {
   thinkingEffort: ThinkingEffort;
   systemStyle: "balanced" | "concise" | "detailed";
   webSearch: boolean;
+  searchMode: SearchMode;
   markdownRich: boolean;
 }

@@ -6,6 +6,8 @@ import ReactMarkdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Message } from "@/types/chat";
 import CodeBlock from "./CodeBlock";
+import ResearchPanel from "./ResearchPanel";
+import { citationPlugin, sourceDomain } from "@/lib/research";
 
 interface Props {
   message: Message;
@@ -54,6 +56,9 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
   const isStopped = message.status === "stopped";
+  const hasResearch = !isUser && Boolean(message.research || message.searchPhase === "search");
+  const citationSources = message.research?.sources;
+  const markdownPlugins = useMemo(() => [remarkGfm, citationPlugin(citationSources ?? [])], [citationSources]);
   const [copied, setCopied] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -117,6 +122,16 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
       }
 
       const external = safeHref.startsWith("http");
+      const label = typeof children === "string" ? children : Array.isArray(children) && children.length === 1 ? String(children[0]) : "";
+      const source = /^\d+$/.test(label) ? citationSources?.find((item) => item.id === Number(label) && normalizeHref(item.url) === safeHref) : undefined;
+      if (source) {
+        return <a href={safeHref} target="_blank" rel="noopener noreferrer"
+          title={`${source.title} · ${sourceDomain(source.url)}`}
+          aria-label={`Source ${source.id}: ${source.title}`}
+          className="mx-0.5 inline-flex min-w-5 items-center justify-center rounded-md border border-[#e58e74]/25 bg-[#e58e74]/10 px-1.5 py-0.5 align-baseline text-[10px] font-semibold text-[#f0a087] no-underline transition hover:border-[#e58e74]/60 hover:bg-[#e58e74]/20 focus-visible:outline-2 focus-visible:outline-[#e58e74]">
+          {source.id}
+        </a>;
+      }
       return (
         <a
           href={safeHref}
@@ -184,7 +199,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
         </blockquote>
       );
     },
-  }), []);
+  }), [citationSources]);
 
   return (
     <div
@@ -193,7 +208,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
       }`}
       style={{ animationDelay: `${Math.min(index * 24, 160)}ms` }}
     >
-      <div className={`flex min-w-0 gap-2.5 md:gap-3 ${isUser ? "max-w-[96%] flex-row-reverse md:max-w-[82%]" : "max-w-full"}`}>
+      <div className={`flex min-w-0 gap-2.5 md:gap-3 ${isUser ? "max-w-[96%] flex-row-reverse md:max-w-[82%]" : hasResearch ? "w-full" : "max-w-full"}`}>
         <div className="mt-1 shrink-0">
           <div
             className={`flex h-8 w-8 items-center justify-center rounded-full ${
@@ -206,7 +221,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
           </div>
         </div>
 
-        <div className="group min-w-0">
+        <div className={`group min-w-0 ${hasResearch ? "w-full" : ""}`}>
           <div
             className={`rounded-2xl px-4 py-3 ${
               isUser
@@ -218,6 +233,8 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
                   : "bg-[#191e24]/90 text-slate-100"
             }`}
           >
+            {hasResearch && <ResearchPanel research={message.research} query={message.searchQuery}
+              active={message.status === "streaming" && !message.content} stopped={isStopped} />}
             {isUser ? (
               <div>
                 {message.images && message.images.length > 0 && (
@@ -234,13 +251,13 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
               </div>
             ) : message.content && markdownRich ? (
               <div className="prose prose-sm max-w-none break-words prose-custom dark:prose-invert prose-headings:font-semibold prose-a:no-underline hover:prose-a:underline">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                <ReactMarkdown remarkPlugins={markdownPlugins} components={markdownComponents}>
                   {message.content}
                 </ReactMarkdown>
               </div>
             ) : message.content ? (
               <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
-            ) : (
+            ) : hasResearch ? null : (
               <div role="status" aria-live="polite" className="flex items-center gap-3 py-2">
                 <div aria-hidden="true" className="flex items-center gap-1">
                   <span className="typing-dot" />

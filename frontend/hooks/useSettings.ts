@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   thinkingEffort: "max",
   systemStyle: "balanced",
   webSearch: true,
+  searchMode: "auto",
   markdownRich: true,
 };
 
@@ -26,6 +27,9 @@ function loadSettings(): UserSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      searchMode: ["auto", "always", "off"].includes(parsed.searchMode ?? "")
+        ? parsed.searchMode!
+        : parsed.webSearch === false ? "off" : "auto",
       temperature: Number.isFinite(parsed.temperature) ? Number(parsed.temperature) : DEFAULT_SETTINGS.temperature,
       maxTokens: Number.isFinite(parsed.maxTokens) ? Number(parsed.maxTokens) : DEFAULT_SETTINGS.maxTokens,
       thinkingEffort: effortLevels.includes(parsed.thinkingEffort ?? "")

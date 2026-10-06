@@ -14,7 +14,7 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 - **Conversation management:** search, rename, pin, and delete saved chats.
 - **Model selection:** discover available models and adjust thinking effort from the model menu.
 - **Code panels:** syntax highlighting, line numbers, copy, download, line wrapping, and an expanded view.
-- **Web research:** optional Exa searches with source highlights and citations before the local model answers.
+- **Web research:** Auto / Search / Off control, live progress, expandable source cards, and clickable citations saved with each answer.
 - **Image attachments:** send images to providers and models that support vision.
 - **Responsive design:** a charcoal interface with coral accents for desktop and mobile.
 
@@ -195,6 +195,7 @@ The example file uses smaller research limits than the application defaults. You
 | `WEB_SEARCH_MAX_RESULTS` | `12` | Search result limit; example file sets `6` |
 | `WEB_SEARCH_MAX_PAGES` | `6` | Sources supplied to the model; example file sets `3` |
 | `WEB_SEARCH_DEEP_QUERIES` | `3` | Related query limit |
+| `WEB_SEARCH_CONTEXT_CHARS` | `1800` | Maximum extract characters per source supplied to the model |
 
 The frontend requests up to `16384` output tokens by default. Atomic Chat and model limits still apply. Configure model loading, context size, and hardware options in Atomic Chat. The backend's legacy native Ollama options are not sent in Atomic Chat mode.
 
@@ -214,7 +215,21 @@ EXA_API_KEY=your-exa-api-key
 
 Replace the placeholder locally with your key, or provide `EXA_API_KEY` through the backend process environment. Process environment variables take precedence over `.env`. Restart FastAPI after changing them. Keep the key out of frontend variables, Git, and chat messages.
 
-The backend calls `POST https://api.exa.ai/search` with `contents.highlights=true`, then passes source titles, URLs, and extracts to Atomic Chat. Atomic Chat still generates the answer using your selected local model. Search is automatic for eligible questions such as “What is the latest battery research?”; ordinary greetings and many coding tasks skip it. The frontend request must also allow web search.
+The backend calls `POST https://api.exa.ai/search` with `contents.highlights=true`, then passes source titles, URLs, publication dates, and extracts to Atomic Chat. Atomic Chat still generates the answer using your selected local model.
+
+Use the **Web** control below the composer:
+
+| Mode | Behavior |
+| --- | --- |
+| Auto | Search when fresh information is useful or you explicitly request a search |
+| Search | Use web sources for questions, including ones Auto would normally skip |
+| Off | Skip web research for this conversation's requests |
+
+The choice is saved in your browser and applies to future messages across chats. Greetings and standalone date questions skip search in both Auto and Search modes. The backend must also have `WEB_SEARCH_ENABLED=true`.
+
+Search progress appears before retrieval begins. Source chips open the original pages; **Sources** expands cards with titles, snippets, and publication dates when available. Numbered citations link to those retrieved URLs. Sources and search warnings are saved with the assistant reply and remain available when reopening the chat. Existing databases gain an optional `research` column at backend startup; old messages stay intact.
+
+Short follow-up questions can include the previous user topic in the search query. Search providers receive those query details, but not the complete conversation or generated answers.
 
 Successful results are cached for `WEB_SEARCH_CACHE_TTL` seconds. Source limits are applied locally. Exa mode does not fan out related queries or fetch source pages again. A missing key, API failure, or empty result produces a cautious-answer instruction; it does not silently switch providers. Failed searches are not cached, so the next request can recover.
 
@@ -370,4 +385,4 @@ Interactive documentation is available at **[FastAPI docs](http://127.0.0.1:8000
 | `POST` | `/api/chat` | Generate and save a complete response |
 | `POST` | `/api/chat/stream` | Stream a response as newline-delimited JSON |
 
-Streaming events use `status` for progress, `token` for generated text, `error` for failures, and `done` for successful completion. Keep backend and frontend changes together when editing this protocol.
+Streaming events use `status` for progress (with optional `phase` and `query`), `research` for source metadata and search warnings, `token` for generated text, `error` for failures, and `done` for successful completion. `web_search_mode` accepts `auto`, `always`, or `off`; `web_search_enabled=false` also disables retrieval. Complete responses and saved assistant messages include optional `research` metadata. Keep backend and frontend changes together when editing this protocol.

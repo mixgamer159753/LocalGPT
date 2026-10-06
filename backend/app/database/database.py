@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 
 from app.core.config import DATABASE_URL
 
@@ -39,6 +39,10 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add optional metadata to existing installations; keep all chat data.
+        columns = await conn.run_sync(lambda connection: inspect(connection).get_columns("messages"))
+        if not any(column["name"] == "research" for column in columns):
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN research JSON"))
 
     # Clean up empty conversations (from previous crashes)
     from sqlalchemy import func, select

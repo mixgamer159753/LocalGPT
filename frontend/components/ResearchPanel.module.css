@@ -1,0 +1,48 @@
+.panel {
+  width: 100%;
+  max-width: 640px;
+  min-width: 0;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #343b46;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #20252d 0%, #171c22 100%);
+  font-size: 12px;
+}
+.heading { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+.icon { display: flex; color: #f0a087; }
+.title { color: #ebe8e3; font-size: 12px; font-weight: 600; }
+.badge { margin-left: auto; color: #8c97a7; font-size: 10px; }
+.toggle { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 6px; color: #a8b3c2; cursor: pointer; }
+.toggle:hover { background: #2b323c; color: #f4b59f; }
+.toggle svg { transition: transform .18s ease; }
+.rotated { transform: rotate(180deg); }
+.query { margin: 8px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #909bac; font-size: 11px; }
+.progress { display: flex; align-items: center; gap: 9px; margin-top: 15px; color: #697587; font-size: 11px; }
+.activeStep { display: flex; align-items: center; gap: 5px; color: #f0a087; }
+.connector { width: 24px; height: 1px; background: #3a424e; }
+.elapsed { margin-left: auto; color: #8c97a7; font-variant-numeric: tabular-nums; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chips a, .chips button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 7px; border: 1px solid #363e4a; border-radius: 7px; background: #191e25; color: #bac3cf; font-size: 10px; overflow-wrap: anywhere; cursor: pointer; }
+.chips a:hover, .chips button:hover { border-color: #a66e5b; color: #ffc1aa; }
+.number { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 4px; background: #e58e741a; color: #f0a087; font-size: 10px; font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.card { display: flex; flex-direction: column; gap: 7px; padding: 12px; border: 1px solid #343c48; border-radius: 10px; background: #171c22; text-decoration: none; transition: border-color .15s, background .15s; }
+.card:hover { border-color: #b97e68; background: #222831; }
+.cardMeta { display: flex; align-items: center; gap: 6px; min-width: 0; color: #8995a7; font-size: 10px; }
+.cardMeta span:nth-child(2) { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: #eee9e4; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.card p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; color: #97a3b4; font-size: 11px; line-height: 1.6; }
+.card time { color: #6f7c8e; font-size: 10px; margin-top: auto; }
+.warning { margin-top: 10px; color: #eac299; font-size: 11px; line-height: 1.6; }
+.ready { display: flex; align-items: center; gap: 5px; margin-top: 12px; color: #d9a78e; font-size: 11px; }
+.ready span { color: #8692a3; }
+.panel a:focus-visible, .panel button:focus-visible { outline: 2px solid #e58e74; outline-offset: 3px; }
+@media (max-width: 540px) {
+  .panel { min-width: 0; padding: 11px; }
+  .grid { grid-template-columns: 1fr; }
+  .badge { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toggle svg, .card { transition: none; }
+}

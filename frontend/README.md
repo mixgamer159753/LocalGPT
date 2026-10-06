@@ -5,6 +5,11 @@ conversation sidebar, model picker, streaming message display, empty states, and
 responsive layout. Model generation is provided by Atomic Chat through the
 FastAPI backend.
 
+The composer offers Auto / Search / Off web search modes. Search replies show
+live retrieval progress, expandable source cards, and numbered links. FastAPI
+retrieves sources from Exa and stores source metadata with completed replies.
+Exa credentials belong only in the backend environment.
+
 ## Scripts
 
 ```bash

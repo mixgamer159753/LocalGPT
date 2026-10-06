@@ -3,12 +3,15 @@
 import { useRef, useCallback, useState } from "react";
 import { API_HEADERS, STREAM_URL } from "@/lib/api";
 import { type ApiContent, type ApiContentPart, Message, UserSettings } from "@/types/chat";
+import { parseResearchInfo } from "@/lib/research";
+import { ResearchInfo } from "@/types/chat";
 
 const STREAM_TIMEOUT_MS = 300_000;
 const MAX_HISTORY = 4;
 
 type StreamEvent =
-  | { type: "status"; message: string }
+  | { type: "status"; message: string; phase?: "search" | "answer"; query?: string }
+  | { type: "research"; research: ResearchInfo }
   | { type: "token"; content: string }
   | { type: "error"; message: string }
   | { type: "done" };
@@ -24,7 +27,12 @@ function parseStreamEvent(line: string): StreamEvent {
 
   const value = event as Record<string, unknown>;
   if (value.type === "status" && typeof value.message === "string") {
-    return { type: "status", message: value.message };
+    return { type: "status", message: value.message,
+      phase: value.phase === "search" || value.phase === "answer" ? value.phase : undefined,
+      query: typeof value.query === "string" ? value.query : undefined };
+  }
+  if (value.type === "research") {
+    return { type: "research", research: parseResearchInfo(value.research) };
   }
   if (value.type === "token" && typeof value.content === "string") {
     return { type: "token", content: value.content };
@@ -83,7 +91,8 @@ export function useStreaming(opts: UseStreamingOptions) {
           max_tokens: settingsRef.current.maxTokens || 16384,
           thinking_effort: settingsRef.current.thinkingEffort,
           response_style: settingsRef.current.systemStyle,
-          web_search_enabled: settingsRef.current.webSearch,
+          web_search_enabled: settingsRef.current.searchMode !== "off",
+          web_search_mode: settingsRef.current.searchMode,
           conversation_id: conversationIdRef.current,
         }),
       });
@@ -113,7 +122,9 @@ export function useStreaming(opts: UseStreamingOptions) {
         if (!line.trim()) return;
         const event = parseStreamEvent(line);
         if (event.type === "status") {
-          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, statusText: event.message, status: "streaming" } : msg));
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, statusText: event.message, searchPhase: event.phase, searchQuery: event.query ?? msg.searchQuery, status: "streaming" } : msg));
+        } else if (event.type === "research") {
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, research: event.research, searchPhase: "answer" } : msg));
         } else if (event.type === "token") {
           aiText += event.content;
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: aiText, status: "streaming", statusText: undefined } : msg));

@@ -22,7 +22,7 @@ from app.schemas.chat import (
 )
 from app.services.ollama import OllamaService, OllamaUnavailableError
 from app.services.streaming import stream_chat
-from app.services.web_research import apply_research_context, research_for_messages
+from app.services.web_research import apply_research_context, decide_search, research_for_messages, research_payload
 from app.services.memory import build_memory_context, get_all_memories, set_memory, delete_memory
 from app.schemas.chat import ContentPart
 from sqlalchemy import text
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/api", tags=["Chat"])
 ollama = OllamaService()
 
 
-def _stream_event(event_type: str, **payload: str) -> str:
+def _stream_event(event_type: str, **payload) -> str:
     return json.dumps({"type": event_type, **payload}, ensure_ascii=False) + "\n"
 
 
@@ -205,7 +205,7 @@ async def _get_memory_context(db: AsyncSession) -> str:
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     messages = [m.model_dump() for m in request.messages]
-    research = await research_for_messages(messages) if request.web_search_enabled else None
+    research = await research_for_messages(messages, request.web_search_mode) if request.web_search_enabled else None
     enriched_messages = apply_research_context(messages, research)
     memory_context = await _get_memory_context(db)
 
@@ -224,11 +224,12 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     except OllamaUnavailableError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
 
-    conversation_id = await _persist_turn(db, request, answer)
-    return ChatResponse(content=answer, conversation_id=conversation_id)
+    metadata = research_payload(research)
+    conversation_id = await _persist_turn(db, request, answer, metadata)
+    return ChatResponse(content=answer, conversation_id=conversation_id, research=metadata)
 
 
-async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str) -> int | None:
+async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str, research: dict | None = None) -> int | None:
     """Save the latest user message + assistant reply to a conversation."""
     if not request.messages:
         return request.conversation_id
@@ -254,7 +255,7 @@ async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str) -> 
         return conversation.id
 
     db.add(Message(conversation_id=conversation.id, role=last_user_message.role, content=_content_to_text(last_user_message.content)))
-    db.add(Message(conversation_id=conversation.id, role="assistant", content=answer))
+    db.add(Message(conversation_id=conversation.id, role="assistant", content=answer, research=research))
 
     # Explicitly touch updated_at so the sidebar sorts correctly
     conversation.updated_at = _utcnow()
@@ -297,10 +298,16 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         chunks: list[str] = []
         stream_failed = False
         error_message = ""
+        metadata = None
         try:
-            research = await research_for_messages(messages) if request.web_search_enabled else None
+            decision = decide_search(messages, request.web_search_mode) if request.web_search_enabled else None
+            if decision:
+                yield _stream_event("status", message=decision.status, phase="search", query=decision.query)
+            research = await research_for_messages(messages, request.web_search_mode) if request.web_search_enabled else None
             if research is not None:
-                yield _stream_event("status", message=research.decision.status)
+                metadata = research_payload(research)
+                yield _stream_event("research", research=metadata)
+            yield _stream_event("status", message="Preparing answer..." if research else "Thinking...", phase="answer")
             enriched_messages = apply_research_context(messages, research)
             memory_context = await _get_memory_context(db)
 
@@ -350,7 +357,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                                 role=last_user_message["role"],
                                 content=_content_to_text(last_user_message["content"]),
                             ))
-                        session.add(Message(conversation_id=conversation_id, role="assistant", content=full_reply))
+                        session.add(Message(conversation_id=conversation_id, role="assistant", content=full_reply, research=metadata))
                         # Touch updated_at for sidebar ordering
                         conv = await session.get(Conversation, conversation_id)
                         if conv:

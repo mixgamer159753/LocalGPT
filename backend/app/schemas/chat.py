@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     thinking_effort: Literal["low", "medium", "high", "max"] = "max"
     response_style: Literal["balanced", "concise", "detailed"] = "balanced"
     web_search_enabled: bool = True
+    web_search_mode: Literal["auto", "always", "off"] = "auto"
     conversation_id: Optional[int] = None
     persist_user_message: bool = True
 
@@ -57,9 +58,26 @@ class ChatRequest(BaseModel):
         return v
 
 
+class ResearchSourceOut(BaseModel):
+    id: int
+    title: str
+    url: str
+    snippet: str
+    published_date: Optional[str] = None
+
+
+class ResearchOut(BaseModel):
+    query: str
+    provider: str
+    cached: bool = False
+    warning: Optional[str] = None
+    sources: list[ResearchSourceOut] = Field(default_factory=list)
+
+
 class ChatResponse(BaseModel):
     content: str
     conversation_id: Optional[int] = None
+    research: Optional[ResearchOut] = None
 
 
 class MessageOut(BaseModel):
@@ -69,6 +87,7 @@ class MessageOut(BaseModel):
     role: str
     content: str
     created_at: datetime.datetime
+    research: Optional[ResearchOut] = None
 
 
 class ConversationOut(BaseModel):

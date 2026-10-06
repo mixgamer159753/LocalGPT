@@ -45,7 +45,9 @@ class ExaResearchTests(unittest.IsolatedAsyncioTestCase):
             bundle = await research.research_for_messages(self.messages)
             cached = await research.research_for_messages(self.messages)
         self.assertEqual(len(requests), 1)
-        self.assertIs(cached, bundle)
+        self.assertTrue(cached.cached)
+        self.assertFalse(bundle.cached)
+        self.assertEqual(cached.sources, bundle.sources)
         self.assertEqual(len(bundle.sources), 1)
         self.assertIn("Published today", bundle.sources[0].text)
         context = research.apply_research_context(self.messages, bundle)[0]["content"]
@@ -57,7 +59,7 @@ class ExaResearchTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(research, "EXA_API_KEY", ""), patch.object(research.httpx, "AsyncClient") as client:
             bundle = await research.research_for_messages(self.messages)
         client.assert_not_called()
-        self.assertIn("EXA_API_KEY", bundle.warning)
+        self.assertIn("Exa API key", bundle.warning)
         self.assertFalse(research._research_cache)
 
     async def test_failures_are_not_cached_and_do_not_expose_response(self):

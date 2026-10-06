@@ -103,6 +103,8 @@ export default function Home() {
           onSend={sendMessage}
           onStop={stopGeneration}
           disabled={loading}
+          searchMode={settings.searchMode}
+          onSearchModeChange={(searchMode) => setSettings({ ...settings, searchMode, webSearch: searchMode !== "off" })}
         />
       </section>
 

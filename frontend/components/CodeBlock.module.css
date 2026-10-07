@@ -67,6 +67,11 @@
   transition: color 150ms, background 150ms, border-color 150ms;
 }
 
+.workspaceButton { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 8px; border: 1px solid #e58e7438; border-radius: 7px; background: #e58e7410; color: #f0a087; font-size: 11px; cursor: pointer; }
+.workspaceButton:hover { background: #e58e7424; }
+.workspaceButton:disabled { cursor: default; opacity: .4; }
+.workspaceButton:focus-visible { outline: 2px solid #e58e74; outline-offset: 2px; }
+
 .panel .copyButton { min-width: 72px; border-color: #e58e7430; background: #e58e7412; color: #ffb297; }
 .panel .iconButton:hover { background: #ffffff0a; color: #eef1f5; }
 .panel .copyButton:hover { background: #e58e7424; border-color: #e58e7460; }
@@ -176,6 +181,7 @@
   .identity { flex: 1; min-width: 100px; gap: 7px; }
   .actions { margin-left: auto; gap: 2px; }
   .downloadLabel, .divider { display: none; }
+  .workspaceButton span { display: none; }
   .pre { font-size: 12px; line-height: 22px; }
   .line { min-height: 22px; }
   .lineNumber { width: 3.25em; padding: 0 8px; }

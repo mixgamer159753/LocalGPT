@@ -10,6 +10,12 @@ live retrieval progress, expandable source cards, and numbered links. FastAPI
 retrieves sources from Exa and stores source metadata with completed replies.
 Exa credentials belong only in the backend environment.
 
+Code blocks can open a coding workspace with editable files, syntax highlighting,
+HTML/CSS/JavaScript preview, desktop/mobile sizes, local browser drafts, and ZIP
+export. Generated pages run in a sandboxed frame; optional external assets are
+controlled separately. Framework and server code can be edited and downloaded,
+but require their own build tool or runtime.
+
 ## Scripts
 
 ```bash

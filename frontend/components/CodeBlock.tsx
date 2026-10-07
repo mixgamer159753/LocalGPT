@@ -2,16 +2,17 @@
 
 import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Code2, Copy, Download, Maximize2, WrapText, X } from "lucide-react";
+import { Check, Code2, Copy, Download, Maximize2, PanelRightOpen, WrapText, X } from "lucide-react";
 import { describeLanguage, highlightLines } from "@/lib/code-highlighting";
 import styles from "./CodeBlock.module.css";
 
 interface Props {
   code: string;
   language?: string;
+  onOpenWorkspace?: () => void;
 }
 
-const CodeSource = memo(function CodeSource({ code, language }: Required<Props>) {
+const CodeSource = memo(function CodeSource({ code, language }: { code: string; language: string }) {
   const lines = useMemo(() => highlightLines(code, language), [code, language]);
 
   return (
@@ -33,7 +34,7 @@ const CodeSource = memo(function CodeSource({ code, language }: Required<Props>)
   );
 });
 
-export default function CodeBlock({ code, language = "" }: Props) {
+export default function CodeBlock({ code, language = "", onOpenWorkspace }: Props) {
   const [wrapped, setWrapped] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
@@ -94,6 +95,11 @@ export default function CodeBlock({ code, language = "" }: Props) {
             </div>
           </div>
           <div className={styles.actions}>
+            {onOpenWorkspace && <button type="button" className={styles.workspaceButton} disabled={!code.trim()}
+              onClick={() => { setExpanded(false); onOpenWorkspace(); }}
+              title="Edit files, preview the page, and download the project" aria-label="Open coding workspace">
+              <PanelRightOpen size={14} /><span>Workspace</span>
+            </button>}
             <button
               type="button" className={styles.iconButton}
               onClick={() => setWrapped((value) => !value)} aria-pressed={wrapped}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ComponentPropsWithoutRef, useEffect, useMemo, useState } from "react";
+import { ComponentPropsWithoutRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Check, Copy, ExternalLink, Link2Off, User } from "lucide-react";
 import ReactMarkdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,14 +8,16 @@ import { Message } from "@/types/chat";
 import CodeBlock from "./CodeBlock";
 import ResearchPanel from "./ResearchPanel";
 import { citationPlugin, sourceDomain } from "@/lib/research";
+import { CodeProject, extractCodeProject } from "@/lib/code-workspace";
 
 interface Props {
   message: Message;
   index?: number;
   markdownRich?: boolean;
+  onOpenWorkspace?: (project: CodeProject) => void;
 }
 
-function MarkdownPre({ node, children }: ComponentPropsWithoutRef<"pre"> & ExtraProps) {
+function MarkdownPre({ node, children, onWorkspace }: ComponentPropsWithoutRef<"pre"> & ExtraProps & { onWorkspace?: (code: string, language: string) => void }) {
   const codeNode = node?.children.find((child) => child.type === "element" && child.tagName === "code");
   if (!codeNode || codeNode.type !== "element") return <pre>{children}</pre>;
 
@@ -26,7 +28,8 @@ function MarkdownPre({ node, children }: ComponentPropsWithoutRef<"pre"> & Extra
   const source = codeNode.children.map((child) => child.type === "text" ? child.value : "").join("");
 
   // Replace the Markdown <pre> itself so panels never end up nested inside a <pre>.
-  return <CodeBlock code={source.replace(/\n$/, "")} language={language} />;
+  const code = source.replace(/\n$/, "");
+  return <CodeBlock code={code} language={language} onOpenWorkspace={onWorkspace ? () => onWorkspace(code, language) : undefined} />;
 }
 
 function normalizeHref(href?: string) {
@@ -52,7 +55,7 @@ function safeImageSrc(src: string | Blob | undefined) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
-export default function MessageBubble({ message, index = 0, markdownRich = true }: Props) {
+export default function MessageBubble({ message, index = 0, markdownRich = true, onOpenWorkspace }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
   const isStopped = message.status === "stopped";
@@ -61,6 +64,12 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
   const markdownPlugins = useMemo(() => [remarkGfm, citationPlugin(citationSources ?? [])], [citationSources]);
   const [copied, setCopied] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const contentRef = useRef(message.content);
+  useEffect(() => { contentRef.current = message.content; }, [message.content]);
+  const openWorkspace = useCallback((code: string, language: string) => {
+    const project = extractCodeProject(contentRef.current, code, language);
+    if (project) onOpenWorkspace?.(project);
+  }, [onOpenWorkspace]);
 
   useEffect(() => {
     if (!lightboxSrc) return;
@@ -90,7 +99,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
 
   // Stable renderers preserve each panel's wrap, copy, and expanded state while streaming.
   const markdownComponents = useMemo<Components>(() => ({
-    pre: MarkdownPre,
+    pre(props) { return <MarkdownPre {...props} onWorkspace={onOpenWorkspace ? openWorkspace : undefined} />; },
     code({ children }) {
       return (
         <code className="rounded-md border border-[#343b46] bg-[#12161c] px-1.5 py-0.5 font-mono text-[0.85em] text-[#ffb297] before:content-none after:content-none">
@@ -199,7 +208,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true 
         </blockquote>
       );
     },
-  }), [citationSources]);
+  }), [citationSources, onOpenWorkspace, openWorkspace]);
 
   return (
     <div

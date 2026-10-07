@@ -14,6 +14,7 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 - **Conversation management:** search, rename, pin, and delete saved chats.
 - **Model selection:** discover available models and adjust thinking effort from the model menu.
 - **Code panels:** syntax highlighting, line numbers, copy, download, line wrapping, and an expanded view.
+- **Coding workspace:** editable project files, a live web preview, desktop/mobile views, local drafts, and ZIP downloads.
 - **Web research:** Auto / Search / Off control, live progress, expandable source cards, and clickable citations saved with each answer.
 - **Image attachments:** send images to providers and models that support vision.
 - **Responsive design:** a charcoal interface with coral accents for desktop and mobile.
@@ -156,6 +157,20 @@ Invoke-RestMethod http://127.0.0.1:1337/v1/models
 If Atomic Chat uses another port, change `OLLAMA_HOST` in `backend/.env` and restart the backend. The `OLLAMA_*` variable names, internal `ollama.py` module, and `ollama_reachable` health field are legacy names in the shared provider implementation. They do not mean this installation runs Ollama.
 
 The thinking slider offers **Low, Medium, High, and Max**. LocalGPT sends an effort instruction and provider-specific controls; actual reasoning behavior depends on the model server. Image understanding also requires a vision-capable model.
+
+## Coding workspace
+
+Click **Workspace** in any code block to collect the code blocks from that reply into an editable project. File names are read from code-fence metadata (for example `html filename=index.html`) or nearby headings; otherwise LocalGPT assigns names such as `index.html`, `styles.css`, and `script.js`.
+
+- Switch between **Code**, **Split**, and **Preview** views. On large screens, the workspace sits beside the chat; on smaller screens, it opens over the workspace.
+- Edit files with syntax highlighting and line numbers. The preview updates after a short pause in typing. **Ctrl/Cmd + Enter** reloads it; **Tab** indents, and **Shift + Tab** moves keyboard focus out of the editor.
+- Compare a **1280px desktop** viewport with a **390px mobile** viewport, scaled to fit the panel.
+- Download the current file or all project files as a **ZIP**. **Reset edits** restores the original generated files after confirmation.
+- The browser keeps up to eight recent drafts. Reopening the same generated project restores its edits. Drafts belong to this browser and are separate from the original chat reply; if browser storage is unavailable or full, edits remain in the current session.
+
+Live preview supports HTML, CSS, and plain browser JavaScript. Local stylesheet and script references are inlined from workspace files. Framework code, JSX, TypeScript, SCSS, Python, and other server code require their own build tools or runtime after download. The preview displays JavaScript errors and console output.
+
+Generated pages run in a sandboxed frame with a separate origin. External assets are disabled by default; the preview control can allow HTTPS images, fonts, stylesheets, and scripts. API requests, nested frames, and form submissions remain blocked. Workspace edits are never automatically applied to your repository or uploaded to GitHub.
 
 ## Configuration
 

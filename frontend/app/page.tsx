@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import ChatWindow from "@/components/ChatWindow";
@@ -8,6 +9,9 @@ import ChatInput from "@/components/ChatInput";
 import { useChat } from "@/hooks/useChat";
 import { useSettings } from "@/hooks/useSettings";
 import { ThinkingEffort } from "@/types/chat";
+import { useCodeWorkspace } from "@/hooks/useCodeWorkspace";
+
+const CodeWorkspace = dynamic(() => import("@/components/CodeWorkspace"), { ssr: false });
 
 export default function Home() {
   const { settings, setSettings } = useSettings();
@@ -29,6 +33,7 @@ export default function Home() {
   } = useChat(settings);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const workspace = useCodeWorkspace();
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -54,6 +59,7 @@ export default function Home() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onNewChat={() => {
+          workspace.closeWorkspace();
           newChat();
           setSidebarOpen(false);
         }}
@@ -61,6 +67,7 @@ export default function Home() {
         activeId={conversationId}
         pinnedIds={pinnedIds}
         onSelect={(id) => {
+          workspace.closeWorkspace();
           openConversation(id);
           setSidebarOpen(false);
         }}
@@ -97,6 +104,7 @@ export default function Home() {
           loading={loading}
           markdownRich={settings.markdownRich}
           onSend={sendMessage}
+          onOpenWorkspace={workspace.openWorkspace}
         />
 
         <ChatInput
@@ -107,6 +115,11 @@ export default function Home() {
           onSearchModeChange={(searchMode) => setSettings({ ...settings, searchMode, webSearch: searchMode !== "off" })}
         />
       </section>
+
+      {workspace.visible && workspace.session && <CodeWorkspace key={workspace.session.id}
+        project={workspace.session} originalFiles={workspace.session.originalFiles} saveState={workspace.saveState}
+        onClose={workspace.closeWorkspace} onSelectFile={workspace.selectFile}
+        onUpdateFile={workspace.updateFile} onReset={workspace.resetFiles} />}
 
     </main>
   );

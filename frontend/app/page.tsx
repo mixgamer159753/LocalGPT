@@ -33,6 +33,7 @@ export default function Home() {
   } = useChat(settings);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [composerSession, setComposerSession] = useState(0);
   const workspace = useCodeWorkspace();
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function Home() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onNewChat={() => {
+          setComposerSession((value) => value + 1);
           workspace.closeWorkspace();
           newChat();
           setSidebarOpen(false);
@@ -67,6 +69,7 @@ export default function Home() {
         activeId={conversationId}
         pinnedIds={pinnedIds}
         onSelect={(id) => {
+          setComposerSession((value) => value + 1);
           workspace.closeWorkspace();
           openConversation(id);
           setSidebarOpen(false);
@@ -108,6 +111,7 @@ export default function Home() {
         />
 
         <ChatInput
+          key={`${composerSession}-${conversationId ?? "new"}`}
           onSend={sendMessage}
           onStop={stopGeneration}
           disabled={loading}

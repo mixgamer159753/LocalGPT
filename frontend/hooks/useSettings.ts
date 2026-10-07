@@ -22,7 +22,7 @@ function loadSettings(): UserSettings {
       return DEFAULT_SETTINGS;
     }
 
-    const parsed = JSON.parse(raw) as Partial<UserSettings>;
+    const parsed = JSON.parse(raw) as Partial<UserSettings> & { generationBudgetVersion?: number };
     const effortLevels = ["low", "medium", "high", "max"];
     return {
       ...DEFAULT_SETTINGS,
@@ -31,7 +31,9 @@ function loadSettings(): UserSettings {
         ? parsed.searchMode!
         : parsed.webSearch === false ? "off" : "auto",
       temperature: Number.isFinite(parsed.temperature) ? Number(parsed.temperature) : DEFAULT_SETTINGS.temperature,
-      maxTokens: Number.isFinite(parsed.maxTokens) ? Number(parsed.maxTokens) : DEFAULT_SETTINGS.maxTokens,
+      // Migrate hidden low limits left behind by the former settings panel.
+      maxTokens: parsed.generationBudgetVersion === 2 && Number.isFinite(parsed.maxTokens)
+        ? Math.min(16384, Math.max(1, Math.round(Number(parsed.maxTokens)))) : DEFAULT_SETTINGS.maxTokens,
       thinkingEffort: effortLevels.includes(parsed.thinkingEffort ?? "")
         ? parsed.thinkingEffort!
         : DEFAULT_SETTINGS.thinkingEffort,
@@ -54,7 +56,7 @@ export function useSettings() {
 
   const setSettings = useCallback((nextSettings: UserSettings) => {
     setSettingsState(nextSettings);
-    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+    window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...nextSettings, generationBudgetVersion: 2 }));
   }, []);
 
   return { settings, setSettings };

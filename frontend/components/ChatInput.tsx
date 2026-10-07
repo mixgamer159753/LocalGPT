@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Globe2, ImagePlus, Send, Square, X } from "lucide-react";
-import { SearchMode } from "@/types/chat";
+import { Globe2, LoaderCircle, Paperclip, Send, Square, X } from "lucide-react";
+import { FileAttachment, SearchMode } from "@/types/chat";
+import { FILE_ACCEPT, MAX_FILE_BYTES, useFileAttachments } from "@/hooks/useFileAttachments";
+import FileCard from "./FileCard";
+import FilePreviewDialog from "./FilePreviewDialog";
+import fileStyles from "./FileAttachments.module.css";
 
 interface Props {
-  onSend: (message: string, images?: string[]) => void;
+  onSend: (message: string, images?: string[], files?: FileAttachment[]) => void;
   onStop: () => void;
   disabled?: boolean;
   searchMode: SearchMode;
@@ -20,6 +24,11 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
+  const [readingImages, setReadingImages] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
+  const attachments = useFileAttachments();
+  const dragDepthRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,11 +43,13 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
 
   function handleSend() {
     const trimmed = text.trim();
-    if ((!trimmed && images.length === 0) || disabled) {
+    if ((!trimmed && images.length === 0 && attachments.files.length === 0) || disabled || readingImages || attachments.files.some((file) => file.status !== "ready")) {
       return;
     }
 
-    onSend(trimmed, images.length > 0 ? images : undefined);
+    const files = attachments.files.flatMap((file) => file.attachment ? [file.attachment] : []);
+    onSend(trimmed, images.length > 0 ? images : undefined, files.length ? files : undefined);
+    attachments.clear(true);
     setText("");
     setImages([]);
     setAttachmentNotice("");
@@ -46,29 +57,34 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       handleSend();
     }
   }
 
-  async function handleImageSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = event.target.files;
-    if (!files) return;
-
+  async function addSelectedFiles(selectedFiles: File[]) {
+    if (disabled || readingImages) return;
     const results: string[] = [];
-    const selectedFiles = Array.from(files);
-    const remainingSlots = Math.max(0, MAX_IMAGES - images.length);
-    let skippedLarge = false;
-    const candidates = selectedFiles.filter((file) => {
-      if (!file.type.startsWith("image/")) return false;
-      if (file.size > MAX_IMAGE_BYTES) {
-        skippedLarge = true;
-        return false;
+    const remainingSlots = Math.max(0, MAX_IMAGES - images.length - attachments.files.length);
+    const notices: string[] = [];
+    const valid = selectedFiles.filter((file) => {
+      if (file.type.startsWith("image/")) {
+        if (file.size > MAX_IMAGE_BYTES) { notices.push("Each image must be 3.5 MB or smaller."); return false; }
+      } else {
+        const extension = `.${file.name.split(".").pop()?.toLowerCase()}`;
+        if (!FILE_ACCEPT.split(",").includes(extension)) { notices.push(`${file.name}: use PDF, DOCX, text, CSV, or code.`); return false; }
+        if (file.size > MAX_FILE_BYTES) { notices.push(`${file.name}: files must be 8 MB or smaller.`); return false; }
+        if (!file.size) { notices.push(`${file.name} is empty.`); return false; }
       }
       return true;
-    }).slice(0, remainingSlots);
-    for (const file of candidates) {
+    });
+    if (valid.length > remainingSlots) notices.push(`Attach up to ${MAX_IMAGES} files or images per message.`);
+    const candidates = valid.slice(0, remainingSlots);
+    attachments.add(candidates.filter((file) => !file.type.startsWith("image/")));
+    const imageFiles = candidates.filter((file) => file.type.startsWith("image/"));
+    setReadingImages(imageFiles.length > 0);
+    for (const file of imageFiles) {
       try {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
@@ -77,28 +93,33 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
           reader.readAsDataURL(file);
         });
         results.push(dataUrl);
-      } catch { /* skip failed reads */ }
+      } catch { notices.push(`Could not read ${file.name}. Try again.`); }
     }
     if (results.length > 0) setImages((prev) => [...prev, ...results].slice(0, MAX_IMAGES));
-    setAttachmentNotice(
-      skippedLarge
-        ? "Each image must be 3.5 MB or smaller."
-        : selectedFiles.filter((file) => file.type.startsWith("image/")).length > remainingSlots
-          ? `You can attach up to ${MAX_IMAGES} images per message.`
-          : "",
-    );
-    event.target.value = "";
+    setAttachmentNotice([...new Set(notices)].join(" "));
+    setReadingImages(false);
   }
 
   function removeImage(index: number) {
     setImages((prev) => prev.filter((_, i) => i !== index));
   }
 
-  const hasContent = text.trim().length > 0 || images.length > 0;
+  const hasContent = text.trim().length > 0 || images.length > 0 || attachments.files.length > 0;
+  const uploading = readingImages || attachments.files.some((file) => file.status === "uploading");
+  const failed = attachments.files.some((file) => file.status === "error");
+  const full = images.length + attachments.files.length >= MAX_IMAGES;
 
   return (
-    <div className="shrink-0 border-t border-[var(--border)]/80 bg-[var(--surface)]/85 px-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-5 sm:pt-4 md:px-7">
+    <div onDragEnter={(event) => { if (event.dataTransfer.types.includes("Files") && !disabled) { event.preventDefault(); dragDepthRef.current++; setDragging(true); } }}
+      onDragLeave={(event) => { event.preventDefault(); dragDepthRef.current = Math.max(0, dragDepthRef.current - 1); if (!dragDepthRef.current) setDragging(false); }}
+      onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); event.dataTransfer.dropEffect = disabled ? "none" : "copy"; } }}
+      onDrop={(event) => { event.preventDefault(); dragDepthRef.current = 0; setDragging(false); void addSelectedFiles(Array.from(event.dataTransfer.files)); }}
+      className={`relative shrink-0 border-t border-[var(--border)]/80 bg-[var(--surface)]/85 px-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:px-5 sm:pt-4 md:px-7 ${dragging ? "ring-2 ring-inset ring-[#e58e74]" : ""}`}>
       <div className="mx-auto max-w-4xl">
+        {dragging && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-[#191e24]/95 text-sm font-medium text-[#ffb297]">Drop files to attach</div>}
+        {attachments.files.length > 0 && <div className={fileStyles.list} aria-label="File attachments">{attachments.files.map((draft) => <FileCard key={draft.key} name={draft.file.name} size={draft.file.size}
+          kind={draft.attachment?.kind} pages={draft.attachment?.pages} truncated={draft.attachment?.truncated} status={draft.status} error={draft.error}
+          onPreview={draft.attachment ? () => setPreviewFile(draft.attachment!) : undefined} onRemove={() => attachments.remove(draft.key)} onRetry={() => void attachments.retry(draft)} />)}</div>}
         {images.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2" aria-label={`${images.length} image attachments`}>
             {images.map((img, i) => (
@@ -124,20 +145,20 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={`image/*,${FILE_ACCEPT}`}
             multiple
-            onChange={handleImageSelect}
+            onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; void addSelectedFiles(files); }}
             className="hidden"
           />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={disabled || images.length >= MAX_IMAGES}
+            disabled={disabled || full || readingImages}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-800 hover:text-[#ffb297] disabled:cursor-not-allowed disabled:opacity-45"
-            aria-label="Attach image"
-            title={images.length >= MAX_IMAGES ? `Up to ${MAX_IMAGES} images per message` : "Attach images"}
+            aria-label="Attach files or images"
+            title={full ? `Up to ${MAX_IMAGES} attachments per message` : "Attach PDF, DOCX, text, CSV, code, or images"}
           >
-            <ImagePlus size={18} />
+            <Paperclip size={18} />
           </button>
           <textarea
             ref={textareaRef}
@@ -164,15 +185,16 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
             <button
               type="button"
               onClick={handleSend}
-              disabled={!hasContent}
+              disabled={!hasContent || uploading || failed}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e58e74] text-[#271914] transition hover:bg-[#f0a087] active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
               aria-label="Send message"
             >
-              <Send size={16} />
+              {uploading ? <LoaderCircle size={16} className={fileStyles.spinner} /> : <Send size={16} />}
             </button>
           )}
         </div>
 
+        {!images.length && !attachments.files.length && <p className="mt-2 px-1 text-[10px] text-slate-500">Drop files here · PDF, DOCX, text, CSV & code · 4 attachments, 8 MB per document</p>}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-500 dark:text-slate-500">
           <span>Enter to send · Shift + Enter for a new line{ text.length > 18_000 ? ` · ${text.length}/${MAX_MESSAGE_LENGTH}` : ""}</span>
           <label className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 transition ${searchMode === "off" ? "border-transparent text-slate-500" : "border-[#e58e74]/20 bg-[#e58e74]/[0.06] text-[#f0a087]"}`}>
@@ -193,6 +215,7 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
           </label>
         </div>
       </div>
+      {previewFile && <FilePreviewDialog key={previewFile.id} file={previewFile} onClose={() => setPreviewFile(null)} />}
     </div>
   );
 }

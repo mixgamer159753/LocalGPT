@@ -41,8 +41,10 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
         # Add optional metadata to existing installations; keep all chat data.
         columns = await conn.run_sync(lambda connection: inspect(connection).get_columns("messages"))
-        if not any(column["name"] == "research" for column in columns):
-            await conn.execute(text("ALTER TABLE messages ADD COLUMN research JSON"))
+        existing = {column["name"] for column in columns}
+        for name, sql_type in (("research", "JSON"), ("attachments", "JSON"), ("generation_warning", "TEXT")):
+            if name not in existing:
+                await conn.execute(text(f"ALTER TABLE messages ADD COLUMN {name} {sql_type}"))
 
     # Clean up empty conversations (from previous crashes)
     from sqlalchemy import func, select
@@ -61,6 +63,16 @@ async def init_db() -> None:
             await session.commit()
             import logging
             logging.getLogger("localgpt").info("Cleaned up %d empty conversations", len(empty))
+
+    # Interrupted uploads can leave unreferenced drafts; expire them after a day.
+    import datetime
+    from app.database.models import Document
+    from app.services.documents import delete_unused_documents
+    cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+    async with AsyncSessionLocal() as session:
+        ids = set((await session.execute(select(Document.id).where(Document.created_at < cutoff))).scalars())
+        await delete_unused_documents(session, ids)
+        await session.commit()
 
 
 async def get_db():

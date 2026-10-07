@@ -2,19 +2,21 @@
 
 import { useRef, useCallback, useState } from "react";
 import { API_HEADERS, STREAM_URL } from "@/lib/api";
-import { type ApiContent, type ApiContentPart, Message, UserSettings } from "@/types/chat";
+import { type ApiChatMessage, type ApiContentPart, FileAttachment, Message, UserSettings } from "@/types/chat";
 import { parseResearchInfo } from "@/lib/research";
 import { ResearchInfo } from "@/types/chat";
 
-const STREAM_TIMEOUT_MS = 300_000;
+const STREAM_IDLE_TIMEOUT_MS = 300_000;
 const MAX_HISTORY = 4;
 
 type StreamEvent =
   | { type: "status"; message: string; phase?: "search" | "answer"; query?: string }
   | { type: "research"; research: ResearchInfo }
+  | { type: "files"; attachments: FileAttachment[] }
   | { type: "token"; content: string }
   | { type: "error"; message: string }
-  | { type: "done" };
+  | { type: "ping" }
+  | { type: "done"; warning?: string };
 
 function uid() { return Date.now() * 1000 + Math.floor(Math.random() * 1000); }
 function toErrorMessage(error: unknown) { return error instanceof Error ? error.message : String(error); }
@@ -34,6 +36,10 @@ function parseStreamEvent(line: string): StreamEvent {
   if (value.type === "research") {
     return { type: "research", research: parseResearchInfo(value.research) };
   }
+  if (value.type === "files" && Array.isArray(value.attachments)) {
+    const attachments = value.attachments.filter((file) => file && typeof file.id === "string" && typeof file.name === "string" && typeof file.size === "number" && typeof file.chars === "number" && typeof file.kind === "string");
+    return { type: "files", attachments };
+  }
   if (value.type === "token" && typeof value.content === "string") {
     return { type: "token", content: value.content };
   }
@@ -41,8 +47,9 @@ function parseStreamEvent(line: string): StreamEvent {
     return { type: "error", message: value.message };
   }
   if (value.type === "done") {
-    return { type: "done" };
+    return { type: "done", warning: typeof value.warning === "string" ? value.warning : undefined };
   }
+  if (value.type === "ping") return { type: "ping" };
 
   throw new Error("The backend sent an unknown stream event.");
 }
@@ -67,15 +74,21 @@ export function useStreaming(opts: UseStreamingOptions) {
     abortRef.current?.abort();
   }, []);
 
-  const doStream = useCallback(async (apiMessages: { role: "user" | "assistant"; content: ApiContent }[], aiId: number, startedWithoutConversation: boolean) => {
+  const doStream = useCallback(async (apiMessages: ApiChatMessage[], aiId: number, startedWithoutConversation: boolean) => {
     const controller = new AbortController();
     const streamId = ++streamIdRef.current;
     abortRef.current = controller;
     let timeoutId: number | null = null;
     let aiText = "";
+    let timedOut = false;
+    let completionWarning: string | undefined;
+    const resetIdleTimeout = () => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => { timedOut = true; controller.abort(); }, STREAM_IDLE_TIMEOUT_MS);
+    };
 
     try {
-      timeoutId = window.setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
+      resetIdleTimeout();
       const response = await fetch(STREAM_URL, {
         method: "POST",
         headers: {
@@ -97,7 +110,10 @@ export function useStreaming(opts: UseStreamingOptions) {
         }),
       });
 
-      if (!response.ok) throw new Error("The backend rejected the request.");
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(typeof error?.detail === "string" ? error.detail : "The backend rejected the request.");
+      }
       if (!response.body) throw new Error("This browser does not support streaming responses.");
       if (!response.headers.get("Content-Type")?.includes("application/x-ndjson")) {
         throw new Error("The backend returned an unsupported streaming format. Update the backend and frontend together.");
@@ -121,10 +137,13 @@ export function useStreaming(opts: UseStreamingOptions) {
       const consumeLine = (line: string) => {
         if (!line.trim()) return;
         const event = parseStreamEvent(line);
+        if (event.type === "ping") return;
         if (event.type === "status") {
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, statusText: event.message, searchPhase: event.phase, searchQuery: event.query ?? msg.searchQuery, status: "streaming" } : msg));
         } else if (event.type === "research") {
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, research: event.research, searchPhase: "answer" } : msg));
+        } else if (event.type === "files") {
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, attachments: event.attachments } : msg));
         } else if (event.type === "token") {
           aiText += event.content;
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: aiText, status: "streaming", statusText: undefined } : msg));
@@ -134,14 +153,16 @@ export function useStreaming(opts: UseStreamingOptions) {
             setConversationId(null);
             conversationIdRef.current = null;
           }
-          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: `Error: ${event.message}`, status: "error", statusText: undefined } : msg));
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: aiText, errorMessage: event.message, status: "error", statusText: undefined } : msg));
         } else {
           receivedDone = true;
+          completionWarning = event.warning;
         }
       };
 
       while (!encounteredError && !receivedDone) {
         const { value, done } = await reader.read();
+        resetIdleTimeout();
         if (done) {
           buffer += decoder.decode();
           if (buffer.trim()) consumeLine(buffer.replace(/\r$/, ""));
@@ -157,7 +178,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         }
       }
 
-      if (encounteredError) {
+      if (encounteredError || receivedDone) {
         await reader.cancel().catch(() => {});
       }
       if (!encounteredError && !receivedDone) {
@@ -166,7 +187,7 @@ export function useStreaming(opts: UseStreamingOptions) {
 
       if (!encounteredError) {
         if (aiText) {
-          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: aiText, status: "complete", statusText: undefined } : msg));
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: aiText, status: completionWarning ? "incomplete" : "complete", errorMessage: completionWarning, statusText: undefined } : msg));
         } else {
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, content: "Error: The model returned an empty response.", status: "error", statusText: undefined } : msg));
           encounteredError = true;
@@ -181,7 +202,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         await refreshConversations();
       }
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (controller.signal.aborted && !timedOut) {
         if (startedWithoutConversation) {
           setConversationId(null);
           conversationIdRef.current = null;
@@ -189,12 +210,12 @@ export function useStreaming(opts: UseStreamingOptions) {
         setMessages((prev) => prev.map((m) => m.id === aiId ? { ...m, content: aiText || "Generation stopped.", status: "stopped", statusText: undefined } : m));
         return;
       }
-      const msg = toErrorMessage(error);
+      const msg = timedOut ? "The backend stopped responding for five minutes. Any text already received has been kept." : toErrorMessage(error);
       if (startedWithoutConversation) {
         setConversationId(null);
         conversationIdRef.current = null;
       }
-      setMessages((prev) => prev.map((m) => m.id === aiId ? { ...m, content: `Error: ${msg}`, status: "error", statusText: undefined } : m));
+      setMessages((prev) => prev.map((m) => m.id === aiId ? { ...m, content: aiText, errorMessage: msg, status: "error", statusText: undefined } : m));
     } finally {
       if (timeoutId) window.clearTimeout(timeoutId);
       if (streamIdRef.current === streamId) {
@@ -205,21 +226,21 @@ export function useStreaming(opts: UseStreamingOptions) {
     }
   }, [conversationIdRef, modelRef, settingsRef, setConversationId, setMessages, refreshConversations]);
 
-  const sendMessage = useCallback(async (text: string, images: string[] | undefined, currentMessages: Message[], welcomeId: number) => {
-    const trimmed = text.trim();
+  const sendMessage = useCallback(async (text: string, images: string[] | undefined, currentMessages: Message[], welcomeId: number, files?: FileAttachment[]) => {
+    const trimmed = text.trim() || (files?.length ? "Summarize the attached files and highlight the key points." : "");
     if ((!trimmed && (!images || images.length === 0)) || generatingRef.current) return;
 
     stopGeneration();
     generatingRef.current = true;
     setIsGenerating(true);
 
-    const userMessage: Message = { id: uid(), role: "user", content: trimmed, images, created_at: new Date().toISOString() };
+    const userMessage: Message = { id: uid(), role: "user", content: trimmed, images, attachments: files, created_at: new Date().toISOString() };
     const aiId = uid();
 
     const apiMessages = [...currentMessages, userMessage]
-      .filter((m) => m.id !== welcomeId)
-      .map(({ role, content, images }) => {
-        const msg: { role: "user" | "assistant"; content: ApiContent } = { role, content };
+      .filter((m) => m.id !== welcomeId && !m.content.startsWith("Error:") && (m.content.trim() || m.images?.length))
+      .map(({ role, content, images, attachments }) => {
+        const msg: ApiChatMessage = { role, content, attachments: attachments?.map((file) => file.id) };
         if (images && images.length > 0) {
           const parts: ApiContentPart[] = [];
           if (content) parts.push({ type: "text", text: content });

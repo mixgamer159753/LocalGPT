@@ -17,6 +17,7 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 - **Coding workspace:** editable project files, a live web preview, desktop/mobile views, local drafts, and ZIP downloads.
 - **Web research:** Auto / Search / Off control, live progress, expandable source cards, and clickable citations saved with each answer.
 - **Image attachments:** send images to providers and models that support vision.
+- **Chat with files:** attach PDFs, Word documents, text, CSVs, and source code; preview extracted text and ask follow-up questions in a saved chat.
 - **Responsive design:** a charcoal interface with coral accents for desktop and mobile.
 
 ## How it works
@@ -172,6 +173,34 @@ Live preview supports HTML, CSS, and plain browser JavaScript. Local stylesheet 
 
 Generated pages run in a sandboxed frame with a separate origin. External assets are disabled by default; the preview control can allow HTTPS images, fonts, stylesheets, and scripts. API requests, nested frames, and form submissions remain blocked. Workspace edits are never automatically applied to your repository or uploaded to GitHub.
 
+## Chat with your files
+
+Use the **paperclip** in the composer or drop files onto the message box. Attach up to **four files or images per message**. Documents can be **8 MB** each; images keep their existing **3.5 MB** limit.
+
+- Supported documents: text-based **PDF**, **DOCX**, **TXT**, **Markdown**, **CSV/TSV**, JSON, and common source code files. ZIP archives and binary spreadsheets are not supported.
+- Attachment cards show reading progress, errors, retry, and removal. Click a ready card to preview extracted text with line numbers and **Find in file**.
+- Ask for a summary, explanation, comparison, or help with code. Sending files without a question requests a summary automatically.
+- Saved chats retain attachments for follow-up questions. Answers show clickable **File context** labels for the files supplied to the model. Up to four files are selected per answer, prioritizing newly attached files, filenames mentioned in the question, and recent files.
+- Long files use question-relevant text excerpts, with about **15,000 characters** of file context shared across the selected files. When there are no matching terms, excerpts are sampled through the document. The model is instructed to cite filenames and line ranges and disclose missing context; this is text retrieval, not full-document execution or spreadsheet calculation.
+- Extraction keeps up to **120,000 characters** and the first **100 PDF pages**. Partial extraction is marked on the card and in the preview. Scanned PDFs need OCR first; unlock password-protected files before attaching them. DOCX extraction reads body paragraphs and tables, not embedded images or diagrams.
+
+FastAPI extracts files locally and stores their text and metadata in SQLite. Original uploaded binaries are not retained. Removing an unsent card deletes its unused extracted document; deleting a conversation deletes file text that no other saved message references. Unreferenced upload drafts older than one day are removed on backend startup.
+
+File questions stay local in **Auto** web mode. Selecting **Search** also retrieves web sources using your question; extracted file content is never passed to the web search service. Model generation uses your configured provider, normally Atomic Chat on your computer.
+
+After updating an existing checkout, install the updated backend requirements and restart FastAPI. Startup adds the document table and optional message columns while preserving existing conversations.
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+### Long response handling
+
+The backend reads the provider's finish reason. A reported token-limit stop (`length`) with visible output triggers up to **two automatic continuations**, appended to the same answer. If the model still cannot finish, the partial answer remains visible with an explicit warning. A normal model stop is not retried automatically.
+
+The frontend's five-minute timer now measures **connection inactivity**, rather than total generation time. The backend sends keepalive events during research and private reasoning. Stream failures preserve the text already received and show a separate error instead of replacing the answer. Token-limit warnings are retained with saved replies. Older hidden browser token limits are migrated to the current 16,384-token default.
+
 ## Configuration
 
 Start with [backend/.env.example](backend/.env.example) and [frontend/.env.local.example](frontend/.env.local.example). Real environment files are ignored by Git.
@@ -318,6 +347,8 @@ The included `start.bat` is a Windows convenience launcher for the backend and n
 | **LAN page opens but chat fails** | Check port `8000`, `BACKEND_HOST=0.0.0.0`, firewall access, and the exact LAN frontend origin in `CORS_ORIGINS`. |
 | **Slow or empty responses** | Confirm the model is loaded and fits available RAM/VRAM. Try lower thinking effort and inspect provider logs. |
 | **Images are rejected** | Choose a model and provider that support vision. Attachment support in the UI does not add vision support to a text-only model. |
+| **File upload fails** | Restart the updated backend and install `backend/requirements.txt`. Check the 8 MB document limit, supported extension, and unlocked/readable text. Scanned PDFs require OCR. |
+| **An answer ends early** | Update and restart both apps together. Explicit token-limit stops are continued automatically; remaining limits appear as warnings. A normal provider stop can require a shorter task or adjusted model settings in Atomic Chat. |
 
 For Windows port errors such as `[WinError 10013]`, inspect port `8000`:
 
@@ -329,7 +360,7 @@ If needed, change `BACKEND_PORT` to `8001` and `NEXT_PUBLIC_BACKEND_PORT` to `80
 
 ## Data and privacy
 
-- Starting the backend from `backend/` stores chats and memories in `backend/localgpt.db` by default.
+- Starting the backend from `backend/` stores chats, memories, and extracted file text in `backend/localgpt.db` by default.
 - Selected models, pinned conversation IDs, and frontend preferences are stored in the browser's local storage.
 - The database, environment files, installed dependencies, and generated caches are excluded from Git.
 - Model inference stays on your computer when you use a local provider. Optional web research sends search queries to external providers. Exa returns extracted source content; the API key remains on the backend.
@@ -343,11 +374,11 @@ If needed, change `BACKEND_PORT` to `8001` and `NEXT_PUBLIC_BACKEND_PORT` to `80
 LocalGPT/
 ├── backend/
 │   ├── app/
-│   │   ├── api/           Health, models, conversations, memories, and chat
+│   │   ├── api/           Health, models, conversations, memories, chat, and files
 │   │   ├── core/          Environment configuration
 │   │   ├── database/      SQLite connection and SQLAlchemy models
 │   │   ├── schemas/       Request and response validation
-│   │   └── services/      Model clients, streaming, memory, and web research
+│   │   └── services/      Model clients, streaming, memory, web research, and document extraction
 │   ├── tests/             Backend unit tests
 │   ├── .env.example       Backend configuration template
 │   ├── requirements.txt
@@ -399,5 +430,8 @@ Interactive documentation is available at **[FastAPI docs](http://127.0.0.1:8000
 | `DELETE` | `/api/memories/{id}` | Remove a memory |
 | `POST` | `/api/chat` | Generate and save a complete response |
 | `POST` | `/api/chat/stream` | Stream a response as newline-delimited JSON |
+| `POST` | `/api/files?name={filename}` | Upload raw file bytes and return extracted-document metadata |
+| `GET` | `/api/files/{id}` | Preview extracted file text |
+| `DELETE` | `/api/files/{id}` | Remove an unused uploaded draft |
 
-Streaming events use `status` for progress (with optional `phase` and `query`), `research` for source metadata and search warnings, `token` for generated text, `error` for failures, and `done` for successful completion. `web_search_mode` accepts `auto`, `always`, or `off`; `web_search_enabled=false` also disables retrieval. Complete responses and saved assistant messages include optional `research` metadata. Keep backend and frontend changes together when editing this protocol.
+Streaming events use `status` for progress (with optional `phase` and `query`), `research` for web source metadata, `files` for file context metadata, `ping` for keepalive, `token` for generated text, `error` for failures, and `done` for completed processing. `done` includes the provider's `finish_reason` and an optional incomplete-answer `warning`. Chat messages accept an `attachments` array of up to four uploaded document IDs. Saved messages return attachment metadata and optional `generation_warning`. `web_search_mode` accepts `auto`, `always`, or `off`; `web_search_enabled=false` also disables web retrieval. Keep backend and frontend changes together when editing this protocol.

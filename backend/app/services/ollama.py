@@ -90,7 +90,7 @@ class OllamaService:
         except requests.exceptions.HTTPError as exc:
             detail = exc.response.text if exc.response is not None else str(exc)
             # Sanitize image-related errors
-            if "image" in detail.lower() or "does not support" in detail.lower():
+            if "image" in detail.lower():
                 detail = "The model cannot process images. Text-only messages only."
             raise OllamaUnavailableError(f"The model server returned an error: {detail}") from exc
 

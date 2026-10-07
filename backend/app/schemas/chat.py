@@ -17,6 +17,18 @@ class ContentPart(BaseModel):
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: Union[str, list[ContentPart]]
+    attachments: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("attachments")
+    @classmethod
+    def valid_attachment_ids(cls, values: list[str]) -> list[str]:
+        import uuid
+        for value in values:
+            try:
+                uuid.UUID(value)
+            except (ValueError, AttributeError) as exc:
+                raise ValueError("invalid attachment ID") from exc
+        return list(dict.fromkeys(values))
 
     @field_validator("content")
     @classmethod
@@ -80,6 +92,22 @@ class ChatResponse(BaseModel):
     research: Optional[ResearchOut] = None
 
 
+class FileAttachmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    size: int
+    kind: str
+    chars: int
+    pages: Optional[int] = None
+    truncated: bool = False
+
+
+class FilePreviewOut(FileAttachmentOut):
+    text: str
+
+
 class MessageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -88,6 +116,8 @@ class MessageOut(BaseModel):
     content: str
     created_at: datetime.datetime
     research: Optional[ResearchOut] = None
+    attachments: Optional[list[FileAttachmentOut]] = None
+    generation_warning: Optional[str] = None
 
 
 class ConversationOut(BaseModel):

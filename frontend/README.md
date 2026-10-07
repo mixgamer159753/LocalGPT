@@ -10,6 +10,18 @@ live retrieval progress, expandable source cards, and numbered links. FastAPI
 retrieves sources from Exa and stores source metadata with completed replies.
 Exa credentials belong only in the backend environment.
 
+The paperclip and composer drop zone accept PDF, DOCX, text, CSV, and code files
+alongside existing image attachments. Files show extraction progress, retry,
+removal, and searchable text previews with line numbers. FastAPI stores extracted
+text locally; saved chats retain files for follow-up questions and show which
+files supplied each answer's context. Up to four attachments are allowed per
+message (8 MB per document, 3.5 MB per image). Long files use bounded excerpts.
+Auto web mode keeps file questions local; Search adds web results using the question.
+
+Streaming accepts backend keepalive events and reports incomplete answers without
+discarding partial text. Reported token-limit stops can trigger automatic backend
+continuation. Install updated backend dependencies and restart FastAPI when updating.
+
 Code blocks can open a coding workspace with editable files, syntax highlighting,
 HTML/CSS/JavaScript preview, desktop/mobile sizes, local browser drafts, and ZIP
 export. Generated pages run in a sandboxed frame; optional external assets are

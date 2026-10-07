@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Conversation, ConversationDetail, HealthInfo, ModelInfo } from "@/types/chat";
+import { Conversation, ConversationDetail, HealthInfo, ModelInfo, FileAttachment, FilePreview } from "@/types/chat";
 
 const BACKEND_PORT = process.env.NEXT_PUBLIC_BACKEND_PORT || "8000";
 
@@ -69,4 +69,30 @@ export async function updateConversationTitle(id: number, title: string): Promis
 
 export async function deleteConversation(id: number): Promise<void> {
   await api.delete(`/conversations/${id}`);
+}
+
+export function apiErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (error.code === "ECONNABORTED") return "The backend took too long to read this file. Please try again.";
+    if (!error.response) return "Cannot reach the backend. Check that FastAPI is running.";
+  }
+  return fallback;
+}
+
+export async function uploadDocument(file: File, signal: AbortSignal): Promise<FileAttachment> {
+  const { data } = await api.post<FileAttachment>(`/files?name=${encodeURIComponent(file.name)}`, file, {
+    headers: { "Content-Type": "application/octet-stream" }, timeout: 90_000, signal,
+  });
+  return data;
+}
+
+export async function fetchDocument(id: string, signal: AbortSignal): Promise<FilePreview> {
+  const { data } = await api.get<FilePreview>(`/files/${encodeURIComponent(id)}`, { signal });
+  return data;
+}
+
+export async function deleteDraftDocument(id: string): Promise<void> {
+  await api.delete(`/files/${encodeURIComponent(id)}`);
 }

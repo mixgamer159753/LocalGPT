@@ -85,7 +85,8 @@ export function useConversations() {
       if (detail.model) setModel(detail.model);
       setMessages(
         detail.messages.length
-          ? detail.messages.map((m) => ({ id: m.id, role: m.role, content: m.content, created_at: m.created_at, research: m.research }))
+          ? detail.messages.map((m) => ({ id: m.id, role: m.role, content: m.content, created_at: m.created_at, research: m.research, attachments: m.attachments,
+              status: m.generation_warning ? "incomplete" as const : "complete" as const, errorMessage: m.generation_warning ?? undefined }))
           : [welcomeMessage]
       );
     } catch (error) {

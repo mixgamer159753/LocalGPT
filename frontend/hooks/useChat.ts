@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { Message, UserSettings } from "@/types/chat";
+import { FileAttachment, Message, UserSettings } from "@/types/chat";
 import { useConversations } from "./useConversations";
 import { useModel } from "./useModel";
 import { useStreaming } from "./useStreaming";
@@ -55,8 +55,8 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
 
   const { sendMessage: streamSend, stopGeneration, isGenerating } = streaming;
 
-  const sendMessage = useCallback(async (text: string, images?: string[]) => {
-    await streamSend(text, images, messages, WELCOME_ID);
+  const sendMessage = useCallback(async (text: string, images?: string[], files?: FileAttachment[]) => {
+    await streamSend(text, images, messages, WELCOME_ID, files);
   }, [streamSend, messages]);
 
   const newChat = useCallback(() => {

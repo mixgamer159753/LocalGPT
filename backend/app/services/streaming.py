@@ -1,5 +1,6 @@
 import json
 import logging
+from dataclasses import dataclass
 
 import httpx
 from httpx import Timeout
@@ -17,6 +18,17 @@ from app.services.ollama_payload import build_chat_payload
 logger = logging.getLogger("localgpt.streaming")
 
 
+@dataclass
+class StreamResult:
+    finish_reason: str | None = None
+    warning: str | None = None
+
+
+@dataclass
+class StreamStatus:
+    message: str
+
+
 async def stream_chat(
     messages: list[dict],
     model: str | None = None,
@@ -25,8 +37,47 @@ async def stream_chat(
     response_style: str = "balanced",
     memory_context: str = "",
     thinking_effort: str = "max",
+    result: StreamResult | None = None,
 ):
-    """Yield model text chunks and raise OllamaUnavailableError on failure."""
+    """Continue explicit token-limit truncations, with a bounded two-retry budget."""
+    result = result if result is not None else StreamResult()
+    visible_reply = ""
+    current_messages = messages
+    for round_number in range(3):
+        round_text = ""
+        result.finish_reason = None
+        async for chunk in _stream_once(current_messages, model, temperature, max_tokens, response_style, memory_context, thinking_effort, result):
+            round_text += chunk
+            visible_reply += chunk
+            yield chunk
+        logger.info("LLM generation ended: reason=%s round=%s visible_chars=%s", result.finish_reason, round_number + 1, len(round_text))
+        if result.finish_reason != "length":
+            if round_number and not round_text.strip():
+                result.warning = "The model did not finish the continuation. The partial answer has been kept."
+            elif result.finish_reason in {"content_filter", "tool_calls", "function_call"}:
+                result.warning = "The model stopped before returning a complete answer."
+            return
+        if not round_text.strip():
+            result.warning = "The model reached its token limit while thinking. Try a lower thinking effort or a shorter question."
+            if not visible_reply.strip():
+                raise OllamaUnavailableError(result.warning)
+            return
+        if round_number == 2:
+            result.warning = "The model reached its output limit after two continuations. This answer is still incomplete."
+            return
+        yield StreamStatus("Continuing the answer...")
+        # Keep the original question and recent answer tail within a local context window.
+        last_user = next(message for message in reversed(messages) if message["role"] == "user")
+        current_messages = [last_user, {"role": "assistant", "content": visible_reply[-24_000:]}, {
+            "role": "user", "content": (
+                "Continue the previous answer from its last character until the original task is complete. "
+                "The assistant message may be only the answer's ending. Do not repeat it or add an introduction. "
+                "If a code fence is still open, continue its code without opening another fence."
+            ),
+        }]
+
+
+async def _stream_once(messages, model, temperature, max_tokens, response_style, memory_context, thinking_effort, result):
 
     payload = build_chat_payload(
         messages=messages,
@@ -84,6 +135,7 @@ async def stream_chat(
                             output.append(think_filter.feed(content))
                             count_since_flush += 1
                         if data.get("done", False):
+                            result.finish_reason = data.get("done_reason") or "stop"
                             provider_completed = True
                             output.append(think_filter.flush())
                             chunk = flush()
@@ -96,9 +148,9 @@ async def stream_chat(
                                 yield chunk
                 else:
                     async for line in response.aiter_lines():
-                        if not line or not line.startswith("data: "):
+                        if not line or not line.startswith("data:"):
                             continue
-                        raw = line[6:]
+                        raw = line[5:].lstrip()
                         if raw.strip() == "[DONE]":
                             provider_completed = True
                             output.append(think_filter.flush())
@@ -113,11 +165,23 @@ async def stream_chat(
                         if "error" in data:
                             raise OllamaUnavailableError(_sanitize_error(str(data["error"])))
 
-                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        choices = data.get("choices") or []
+                        if not choices:
+                            continue
+                        choice = choices[0]
+                        delta = choice.get("delta") or {}
                         content = delta.get("content")
                         if content:
                             output.append(think_filter.feed(content))
                             count_since_flush += 1
+                        if choice.get("finish_reason"):
+                            result.finish_reason = choice["finish_reason"]
+                            provider_completed = True
+                            output.append(think_filter.flush())
+                            chunk = flush()
+                            if chunk:
+                                yield chunk
+                            break
                         if count_since_flush >= 3:
                             chunk = flush()
                             if chunk:
@@ -152,7 +216,7 @@ def _extract_error(body: bytes) -> str:
 
 
 def _sanitize_error(detail: str) -> str:
-    if "image" in detail.lower() or "does not support" in detail.lower():
+    if "image" in detail.lower():
         return "The model cannot process images. Text-only messages only."
     return detail or "LLM returned an error."
 

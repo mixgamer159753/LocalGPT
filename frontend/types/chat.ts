@@ -6,6 +6,24 @@ export interface ApiContentPart {
 
 export type ApiContent = string | ApiContentPart[];
 
+export interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  kind: string;
+  chars: number;
+  pages?: number | null;
+  truncated: boolean;
+}
+
+export interface FilePreview extends FileAttachment { text: string }
+
+export interface ApiChatMessage {
+  role: "user" | "assistant";
+  content: ApiContent;
+  attachments?: string[];
+}
+
 export type SearchMode = "auto" | "always" | "off";
 
 export interface ResearchSource {
@@ -30,7 +48,9 @@ export interface Message {
   content: string;
   images?: string[];
   created_at?: string;
-  status?: "streaming" | "complete" | "error" | "stopped";
+  status?: "streaming" | "complete" | "error" | "stopped" | "incomplete";
+  errorMessage?: string;
+  attachments?: FileAttachment[] | null;
   statusText?: string;
   searchPhase?: "search" | "answer";
   searchQuery?: string;
@@ -52,6 +72,8 @@ export interface ConversationDetail extends Conversation {
     content: string;
     created_at: string;
     research?: ResearchInfo | null;
+    attachments?: FileAttachment[] | null;
+    generation_warning?: string | null;
   }[];
 }
 

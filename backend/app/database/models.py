@@ -36,9 +36,25 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String(32))
     content: Mapped[str] = mapped_column(Text)
     research: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    attachments: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    generation_warning: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(180))
+    size: Mapped[int]
+    kind: Mapped[str] = mapped_column(String(12))
+    text: Mapped[str] = mapped_column(Text)
+    chars: Mapped[int]
+    pages: Mapped[int | None]
+    truncated: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class Memory(Base):

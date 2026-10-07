@@ -21,7 +21,8 @@ from app.schemas.chat import (
     ModelInfo,
 )
 from app.services.ollama import OllamaService, OllamaUnavailableError
-from app.services.streaming import stream_chat
+from app.services.streaming import stream_chat, StreamResult, StreamStatus
+from app.services.documents import apply_file_context, prepare_file_context, delete_unused_documents
 from app.services.web_research import apply_research_context, decide_search, research_for_messages, research_payload
 from app.services.memory import build_memory_context, get_all_memories, set_memory, delete_memory
 from app.schemas.chat import ContentPart
@@ -36,6 +37,34 @@ ollama = OllamaService()
 
 def _stream_event(event_type: str, **payload) -> str:
     return json.dumps({"type": event_type, **payload}, ensure_ascii=False) + "\n"
+
+
+async def _with_heartbeats(events):
+    """Keep tunnels alive during search or private reasoning without cancelling it."""
+    iterator = events.__aiter__()
+    pending = None
+    try:
+        while True:
+            if pending is None:
+                pending = asyncio.create_task(anext(iterator))
+            ready, _ = await asyncio.wait({pending}, timeout=15)
+            if not ready:
+                yield _stream_event("ping")
+                continue
+            try:
+                event = pending.result()
+            except StopAsyncIteration:
+                return
+            pending = None
+            yield event
+    finally:
+        if pending is not None:
+            pending.cancel()
+            try:
+                await pending
+            except (asyncio.CancelledError, StopAsyncIteration):
+                pass
+        await iterator.aclose()
 
 
 def _utcnow() -> datetime.datetime:
@@ -190,7 +219,11 @@ async def delete_conversation(conversation_id: int, db: AsyncSession = Depends(g
     conversation = await db.get(Conversation, conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    groups = (await db.execute(select(Message.attachments).where(Message.conversation_id == conversation_id))).scalars()
+    file_ids = {item["id"] for group in groups for item in (group or [])}
     await db.delete(conversation)
+    await db.flush()
+    await delete_unused_documents(db, file_ids)
     await db.commit()
 
 
@@ -205,8 +238,10 @@ async def _get_memory_context(db: AsyncSession) -> str:
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     messages = [m.model_dump() for m in request.messages]
-    research = await research_for_messages(messages, request.web_search_mode) if request.web_search_enabled else None
-    enriched_messages = apply_research_context(messages, research)
+    files = await prepare_file_context(db, messages, request.conversation_id)
+    search_enabled = request.web_search_enabled and (not files.text or request.web_search_mode == "always")
+    research = await research_for_messages(messages, request.web_search_mode) if search_enabled else None
+    enriched_messages = apply_file_context(apply_research_context(messages, research), files)
     memory_context = await _get_memory_context(db)
 
     try:
@@ -225,11 +260,11 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=503, detail=str(exc))
 
     metadata = research_payload(research)
-    conversation_id = await _persist_turn(db, request, answer, metadata)
+    conversation_id = await _persist_turn(db, request, answer, metadata, files.attachments, files.sources)
     return ChatResponse(content=answer, conversation_id=conversation_id, research=metadata)
 
 
-async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str, research: dict | None = None) -> int | None:
+async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str, research: dict | None = None, attachments: list | None = None, file_sources: list | None = None) -> int | None:
     """Save the latest user message + assistant reply to a conversation."""
     if not request.messages:
         return request.conversation_id
@@ -254,8 +289,9 @@ async def _persist_turn(db: AsyncSession, request: ChatRequest, answer: str, res
     if last_user_message is None:
         return conversation.id
 
-    db.add(Message(conversation_id=conversation.id, role=last_user_message.role, content=_content_to_text(last_user_message.content)))
-    db.add(Message(conversation_id=conversation.id, role="assistant", content=answer, research=research))
+    if request.persist_user_message:
+        db.add(Message(conversation_id=conversation.id, role=last_user_message.role, content=_content_to_text(last_user_message.content), attachments=attachments))
+    db.add(Message(conversation_id=conversation.id, role="assistant", content=answer, research=research, attachments=file_sources))
 
     # Explicitly touch updated_at so the sidebar sorts correctly
     conversation.updated_at = _utcnow()
@@ -273,6 +309,9 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         conversation = await db.get(Conversation, request.conversation_id)
         if conversation is None:
             raise HTTPException(status_code=404, detail="Conversation not found")
+
+    files = await prepare_file_context(db, messages, request.conversation_id)
+    search_enabled = request.web_search_enabled and (not files.text or request.web_search_mode == "always")
 
     try:
         request.model = await asyncio.to_thread(ollama.resolve_model, request.model)
@@ -299,16 +338,20 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         stream_failed = False
         error_message = ""
         metadata = None
+        result = StreamResult()
         try:
-            decision = decide_search(messages, request.web_search_mode) if request.web_search_enabled else None
+            if files.names:
+                yield _stream_event("files", attachments=files.sources)
+                yield _stream_event("status", message=f"Reading {len(files.names)} attached file(s)...", phase="answer")
+            decision = decide_search(messages, request.web_search_mode) if search_enabled else None
             if decision:
                 yield _stream_event("status", message=decision.status, phase="search", query=decision.query)
-            research = await research_for_messages(messages, request.web_search_mode) if request.web_search_enabled else None
+            research = await research_for_messages(messages, request.web_search_mode) if search_enabled else None
             if research is not None:
                 metadata = research_payload(research)
                 yield _stream_event("research", research=metadata)
             yield _stream_event("status", message="Preparing answer..." if research else "Thinking...", phase="answer")
-            enriched_messages = apply_research_context(messages, research)
+            enriched_messages = apply_file_context(apply_research_context(messages, research), files)
             memory_context = await _get_memory_context(db)
 
             async for chunk in stream_chat(
@@ -319,7 +362,11 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                 request.response_style,
                 memory_context=memory_context,
                 thinking_effort=request.thinking_effort,
+                result=result,
             ):
+                if isinstance(chunk, StreamStatus):
+                    yield _stream_event("status", message=chunk.message, phase="answer")
+                    continue
                 chunks.append(chunk)
                 yield _stream_event("token", content=chunk)
             if not "".join(chunks).strip():
@@ -328,7 +375,7 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         except OllamaUnavailableError as exc:
             stream_failed = True
             error_message = str(exc)
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, GeneratorExit):
             stream_failed = True
             logger.info("Streaming cancelled by client; reply was not saved")
             raise
@@ -356,8 +403,9 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
                                 conversation_id=conversation_id,
                                 role=last_user_message["role"],
                                 content=_content_to_text(last_user_message["content"]),
+                                attachments=files.attachments,
                             ))
-                        session.add(Message(conversation_id=conversation_id, role="assistant", content=full_reply, research=metadata))
+                        session.add(Message(conversation_id=conversation_id, role="assistant", content=full_reply, research=metadata, generation_warning=result.warning, attachments=files.sources))
                         # Touch updated_at for sidebar ordering
                         conv = await session.get(Conversation, conversation_id)
                         if conv:
@@ -371,10 +419,10 @@ async def chat_stream(request: ChatRequest, db: AsyncSession = Depends(get_db)):
         if stream_failed:
             yield _stream_event("error", message=error_message or "The response stream failed.")
             return
-        yield _stream_event("done")
+        yield _stream_event("done", finish_reason=result.finish_reason, warning=result.warning)
 
     return StreamingResponse(
-        generate(),
+        _with_heartbeats(generate()),
         media_type="application/x-ndjson",
         headers={
             "X-Conversation-Id": str(conversation_id),

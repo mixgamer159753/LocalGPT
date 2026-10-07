@@ -4,11 +4,14 @@ import { ComponentPropsWithoutRef, useCallback, useEffect, useMemo, useRef, useS
 import { Bot, Check, Copy, ExternalLink, Link2Off, User } from "lucide-react";
 import ReactMarkdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Message } from "@/types/chat";
+import { FileAttachment, Message } from "@/types/chat";
 import CodeBlock from "./CodeBlock";
 import ResearchPanel from "./ResearchPanel";
 import { citationPlugin, sourceDomain } from "@/lib/research";
 import { CodeProject, extractCodeProject } from "@/lib/code-workspace";
+import FileCard from "./FileCard";
+import FilePreviewDialog from "./FilePreviewDialog";
+import fileStyles from "./FileAttachments.module.css";
 
 interface Props {
   message: Message;
@@ -58,12 +61,13 @@ function safeImageSrc(src: string | Blob | undefined) {
 export default function MessageBubble({ message, index = 0, markdownRich = true, onOpenWorkspace }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
-  const isStopped = message.status === "stopped";
+  const isStopped = message.status === "stopped" || message.status === "incomplete";
   const hasResearch = !isUser && Boolean(message.research || message.searchPhase === "search");
   const citationSources = message.research?.sources;
   const markdownPlugins = useMemo(() => [remarkGfm, citationPlugin(citationSources ?? [])], [citationSources]);
   const [copied, setCopied] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const contentRef = useRef(message.content);
   useEffect(() => { contentRef.current = message.content; }, [message.content]);
   const openWorkspace = useCallback((code: string, language: string) => {
@@ -244,8 +248,10 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
           >
             {hasResearch && <ResearchPanel research={message.research} query={message.searchQuery}
               active={message.status === "streaming" && !message.content} stopped={isStopped} />}
+            {!isUser && !!message.attachments?.length && <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400"><span>File context</span>{message.attachments.map((file) => <button key={file.id} type="button" onClick={() => setPreviewFile(file)} title={`Preview ${file.name}`} className="max-w-56 truncate rounded-md border border-[#e58e74]/20 bg-[#e58e74]/[0.06] px-2 py-1 text-[#f0a087] hover:border-[#e58e74]/60 focus-visible:outline-2 focus-visible:outline-[#e58e74]">{file.name}</button>)}</div>}
             {isUser ? (
               <div>
+                {!!message.attachments?.length && <div className={fileStyles.list} aria-label="Attached files">{message.attachments.map((file) => <FileCard key={file.id} {...file} onPreview={() => setPreviewFile(file)} />)}</div>}
                 {message.images && message.images.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-2">
                     {message.images.map((img, i) => (
@@ -266,7 +272,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
               </div>
             ) : message.content ? (
               <p className="whitespace-pre-wrap break-words text-sm leading-7">{message.content}</p>
-            ) : hasResearch ? null : (
+            ) : hasResearch || message.errorMessage ? null : (
               <div role="status" aria-live="polite" className="flex items-center gap-3 py-2">
                 <div aria-hidden="true" className="flex items-center gap-1">
                   <span className="typing-dot" />
@@ -278,6 +284,8 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
                 </span>
               </div>
             )}
+            {message.errorMessage && <p role="alert" className="mt-3 rounded-lg border border-[#e58e74]/25 bg-[#e58e74]/[0.08] px-3 py-2 text-xs leading-5 text-[#ffb297]">{message.errorMessage}</p>}
+            {message.content && message.status === "streaming" && message.statusText && <p role="status" className="mt-3 text-xs text-slate-400">{message.statusText}</p>}
           </div>
 
           <div className={`mt-1.5 flex items-center gap-2 px-1 ${isUser ? "justify-end" : ""}`}>
@@ -322,6 +330,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
           />
         </div>
       ) : null}
+      {previewFile && <FilePreviewDialog key={previewFile.id} file={previewFile} onClose={() => setPreviewFile(null)} />}
     </div>
   );
 }

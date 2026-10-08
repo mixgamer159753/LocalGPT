@@ -15,7 +15,7 @@ const WELCOME_MESSAGE: Message = {
   content: "Hi. I am LocalGPT, your private AI assistant. How can I help?",
 };
 
-export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
+export function useChat(settings: UserSettings = DEFAULT_SETTINGS, projectId: number | null = null) {
   const { model, setModel, modelRef } = useModel();
 
   const {
@@ -31,10 +31,13 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
     removeConversation: removeConvApi,
     renameConversation: renameConvApi,
     newChat: newChatApi,
+    clearHistory,
   } = useConversations();
 
   const conversationIdRef = useRef(conversationId);
   const settingsRef = useRef(settings);
+  const projectIdRef = useRef(projectId);
+  useEffect(() => { projectIdRef.current = projectId; }, [projectId]);
 
   useEffect(() => {
     conversationIdRef.current = conversationId;
@@ -48,6 +51,7 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
     modelRef,
     conversationIdRef,
     settingsRef,
+    projectIdRef,
     setConversationId,
     setMessages,
     refreshConversations,
@@ -91,5 +95,7 @@ export function useChat(settings: UserSettings = DEFAULT_SETTINGS) {
     renameConversation,
     pinnedIds,
     togglePin,
+    refreshConversations,
+    clearHistory,
   };
 }

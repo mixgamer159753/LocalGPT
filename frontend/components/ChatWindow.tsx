@@ -21,6 +21,7 @@ interface Props {
   onSend?: (text: string) => void;
   markdownRich?: boolean;
   onOpenWorkspace?: (project: CodeProject) => void;
+  onRemember?: (text: string) => void;
 }
 
 const STARTERS = [
@@ -67,7 +68,7 @@ function formatDateSeparator(dateStr: string) {
   return date.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
-export default function ChatWindow({ messages, loading, onSend, markdownRich = true, onOpenWorkspace }: Props) {
+export default function ChatWindow({ messages, loading, onSend, markdownRich = true, onOpenWorkspace, onRemember }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -164,7 +165,7 @@ export default function ChatWindow({ messages, loading, onSend, markdownRich = t
                   <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
                 </div>
               ) : null}
-              <MessageBubble message={message} index={index} markdownRich={markdownRich} onOpenWorkspace={onOpenWorkspace} />
+              <MessageBubble message={message} index={index} markdownRich={markdownRich} onOpenWorkspace={onOpenWorkspace} onRemember={loading ? undefined : onRemember} />
             </div>
           );
         })}

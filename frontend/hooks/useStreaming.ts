@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useState } from "react";
-import { API_HEADERS, STREAM_URL } from "@/lib/api";
+import { apiHeaders, streamUrl } from "@/lib/api";
 import { type ApiChatMessage, type ApiContentPart, FileAttachment, Message, UserSettings } from "@/types/chat";
 import { parseResearchInfo } from "@/lib/research";
 import { ResearchInfo } from "@/types/chat";
@@ -10,7 +10,7 @@ const STREAM_IDLE_TIMEOUT_MS = 300_000;
 const MAX_HISTORY = 4;
 
 type StreamEvent =
-  | { type: "status"; message: string; phase?: "search" | "answer"; query?: string }
+  | { type: "status"; message: string; phase?: "search" | "answer"; query?: string; stage?: string; depth?: "standard" | "deep" }
   | { type: "research"; research: ResearchInfo }
   | { type: "files"; attachments: FileAttachment[] }
   | { type: "token"; content: string }
@@ -31,6 +31,8 @@ function parseStreamEvent(line: string): StreamEvent {
   if (value.type === "status" && typeof value.message === "string") {
     return { type: "status", message: value.message,
       phase: value.phase === "search" || value.phase === "answer" ? value.phase : undefined,
+      stage: typeof value.stage === "string" ? value.stage : undefined,
+      depth: value.depth === "deep" ? "deep" : undefined,
       query: typeof value.query === "string" ? value.query : undefined };
   }
   if (value.type === "research") {
@@ -58,13 +60,14 @@ interface UseStreamingOptions {
   modelRef: React.MutableRefObject<string>;
   conversationIdRef: React.MutableRefObject<number | null>;
   settingsRef: React.MutableRefObject<UserSettings>;
+  projectIdRef: React.MutableRefObject<number | null>;
   setConversationId: (id: number | null) => void;
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   refreshConversations: () => Promise<void>;
 }
 
 export function useStreaming(opts: UseStreamingOptions) {
-  const { modelRef, conversationIdRef, settingsRef, setConversationId, setMessages, refreshConversations } = opts;
+  const { modelRef, conversationIdRef, settingsRef, projectIdRef, setConversationId, setMessages, refreshConversations } = opts;
   const abortRef = useRef<AbortController | null>(null);
   const streamIdRef = useRef(0);
   const generatingRef = useRef(false);
@@ -89,12 +92,12 @@ export function useStreaming(opts: UseStreamingOptions) {
 
     try {
       resetIdleTimeout();
-      const response = await fetch(STREAM_URL, {
+      const response = await fetch(streamUrl(), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/x-ndjson",
-          ...API_HEADERS,
+          ...apiHeaders(),
         },
         signal: controller.signal,
         body: JSON.stringify({
@@ -106,6 +109,8 @@ export function useStreaming(opts: UseStreamingOptions) {
           response_style: settingsRef.current.systemStyle,
           web_search_enabled: settingsRef.current.searchMode !== "off",
           web_search_mode: settingsRef.current.searchMode,
+          research_depth: settingsRef.current.researchDepth,
+          project_id: projectIdRef.current,
           conversation_id: conversationIdRef.current,
         }),
       });
@@ -139,7 +144,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         const event = parseStreamEvent(line);
         if (event.type === "ping") return;
         if (event.type === "status") {
-          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, statusText: event.message, searchPhase: event.phase, searchQuery: event.query ?? msg.searchQuery, status: "streaming" } : msg));
+          setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, statusText: event.message, researchStage: event.stage ?? msg.researchStage, researchDepth: event.depth ?? msg.researchDepth, searchPhase: event.phase, searchQuery: event.query ?? msg.searchQuery, status: "streaming" } : msg));
         } else if (event.type === "research") {
           setMessages((prev) => prev.map((msg) => msg.id === aiId ? { ...msg, research: event.research, searchPhase: "answer" } : msg));
         } else if (event.type === "files") {
@@ -224,7 +229,7 @@ export function useStreaming(opts: UseStreamingOptions) {
         setIsGenerating(false);
       }
     }
-  }, [conversationIdRef, modelRef, settingsRef, setConversationId, setMessages, refreshConversations]);
+  }, [conversationIdRef, modelRef, settingsRef, projectIdRef, setConversationId, setMessages, refreshConversations]);
 
   const sendMessage = useCallback(async (text: string, images: string[] | undefined, currentMessages: Message[], welcomeId: number, files?: FileAttachment[]) => {
     const trimmed = text.trim() || (files?.length ? "Summarize the attached files and highlight the key points." : "");

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Globe2, LoaderCircle, Paperclip, Send, Square, X } from "lucide-react";
-import { FileAttachment, SearchMode } from "@/types/chat";
+import { FileAttachment, SearchMode, ResearchDepth } from "@/types/chat";
 import { FILE_ACCEPT, MAX_FILE_BYTES, useFileAttachments } from "@/hooks/useFileAttachments";
 import FileCard from "./FileCard";
 import FilePreviewDialog from "./FilePreviewDialog";
@@ -14,13 +14,15 @@ interface Props {
   disabled?: boolean;
   searchMode: SearchMode;
   onSearchModeChange: (mode: SearchMode) => void;
+  researchDepth: ResearchDepth;
+  onResearchDepthChange: (depth: ResearchDepth) => void;
 }
 
 const MAX_IMAGES = 4;
 const MAX_IMAGE_BYTES = 3.5 * 1024 * 1024;
 const MAX_MESSAGE_LENGTH = 20_000;
 
-export default function ChatInput({ onSend, onStop, disabled, searchMode, onSearchModeChange }: Props) {
+export default function ChatInput({ onSend, onStop, disabled, searchMode, onSearchModeChange, researchDepth, onResearchDepthChange }: Props) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [attachmentNotice, setAttachmentNotice] = useState("");
@@ -197,7 +199,7 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
         {!images.length && !attachments.files.length && <p className="mt-2 px-1 text-[10px] text-slate-500">Drop files here · PDF, DOCX, text, CSV & code · 4 attachments, 8 MB per document</p>}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-slate-500 dark:text-slate-500">
           <span>Enter to send · Shift + Enter for a new line{ text.length > 18_000 ? ` · ${text.length}/${MAX_MESSAGE_LENGTH}` : ""}</span>
-          <label className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 transition ${searchMode === "off" ? "border-transparent text-slate-500" : "border-[#e58e74]/20 bg-[#e58e74]/[0.06] text-[#f0a087]"}`}>
+          <div className="flex items-center gap-2"><label className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 transition ${searchMode === "off" ? "border-transparent text-slate-500" : "border-[#e58e74]/20 bg-[#e58e74]/[0.06] text-[#f0a087]"}`}>
             <Globe2 size={13} aria-hidden="true" />
             <span>Web</span>
             <select
@@ -213,6 +215,9 @@ export default function ChatInput({ onSend, onStop, disabled, searchMode, onSear
               <option value="off">Off</option>
             </select>
           </label>
+          <button type="button" disabled={disabled || searchMode === "off"} aria-pressed={searchMode !== "off" && researchDepth === "deep"} onClick={() => onResearchDepthChange(researchDepth === "deep" ? "standard" : "deep")}
+            title="Deep research explores more sources, reads page content, and writes a cited report. Slower; uses additional Exa requests."
+            className={`rounded-lg border px-2 py-1.5 text-[11px] transition disabled:opacity-40 ${researchDepth === "deep" && searchMode !== "off" ? "border-[#e58e74]/40 bg-[#e58e74]/10 text-[#ffb297]" : "border-[var(--border)] text-slate-400 hover:text-[#f0a087]"}`}>Deep research</button></div>
         </div>
       </div>
       {previewFile && <FilePreviewDialog key={previewFile.id} file={previewFile} onClose={() => setPreviewFile(null)} />}

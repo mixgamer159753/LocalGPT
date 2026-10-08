@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { fetchHealth, fetchModels } from "@/lib/api";
+import { CONNECTION_EVENT, fetchHealth, fetchModels, getApiBaseUrl } from "@/lib/api";
 import { HealthInfo, ModelInfo, ThinkingEffort } from "@/types/chat";
 
 const THINKING_LEVELS: ThinkingEffort[] = ["low", "medium", "high", "max"];
@@ -22,6 +22,8 @@ interface Props {
   onThinkingEffortChange: (effort: ThinkingEffort) => void;
   onModelChange: (model: string, automatic?: boolean) => void;
   disabled?: boolean;
+  onOpenConnection: () => void;
+  projectName?: string;
 }
 
 function splitModelName(name: string) {
@@ -47,7 +49,7 @@ function modelMeta(model: ModelInfo) {
   ].filter(Boolean).join(" / ");
 }
 
-export default function Header({ onToggleSidebar, model, thinkingEffort, onThinkingEffortChange, onModelChange, disabled }: Props) {
+export default function Header({ onToggleSidebar, model, thinkingEffort, onThinkingEffortChange, onModelChange, disabled, onOpenConnection, projectName }: Props) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [health, setHealth] = useState<HealthInfo | null>(null);
   const [healthUnavailable, setHealthUnavailable] = useState(false);
@@ -56,40 +58,53 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
   const [query, setQuery] = useState("");
   const [loadingModels, setLoadingModels] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const modelsRequestRef = useRef(0);
+  const healthRequestRef = useRef(0);
 
   const refreshModels = useCallback(async () => {
+    const requestId = ++modelsRequestRef.current;
+    const target = getApiBaseUrl();
     setLoadingModels(true);
     try {
       const list = await fetchModels();
+      if (requestId !== modelsRequestRef.current || target !== getApiBaseUrl()) return;
       setModels(list);
-      setLlmOnline(true);
+      setLlmOnline(list.length > 0);
     } catch {
+      if (requestId !== modelsRequestRef.current || target !== getApiBaseUrl()) return;
       setLlmOnline(false);
       setModels([]);
     } finally {
-      setLoadingModels(false);
+      if (requestId === modelsRequestRef.current && target === getApiBaseUrl()) setLoadingModels(false);
     }
   }, []);
 
   const refreshHealth = useCallback(async () => {
+    const requestId = ++healthRequestRef.current;
+    const target = getApiBaseUrl();
     try {
       const nextHealth = await fetchHealth();
+      if (requestId !== healthRequestRef.current || target !== getApiBaseUrl()) return;
       setHealth(nextHealth);
       setHealthUnavailable(false);
       setLlmOnline(nextHealth.ollama_reachable);
     } catch {
+      if (requestId !== healthRequestRef.current || target !== getApiBaseUrl()) return;
       setHealthUnavailable(true);
       setLlmOnline(false);
     }
   }, []);
 
   useEffect(() => {
+    const refresh = () => { void refreshModels(); void refreshHealth(); };
+    const connectionChanged = () => { setModels([]); setHealth(null); setHealthUnavailable(false); refresh(); };
     const timeoutId = window.setTimeout(() => {
-      void refreshModels();
-      void refreshHealth();
+      if (!disabled) refresh();
     }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [refreshModels, refreshHealth]);
+    const interval = window.setInterval(() => { if (document.visibilityState === "visible" && !disabled) refresh(); }, 30000);
+    window.addEventListener(CONNECTION_EVENT, connectionChanged);
+    return () => { window.clearTimeout(timeoutId); window.clearInterval(interval); window.removeEventListener(CONNECTION_EVENT, connectionChanged); };
+  }, [refreshModels, refreshHealth, disabled]);
 
   useEffect(() => {
     if (!dropdownOpen) {
@@ -112,10 +127,10 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
   const activeInstalled = models.some((candidate) => candidate.name === model);
 
   useEffect(() => {
-    if (models.length > 0 && !activeInstalled) {
+    if (!disabled && models.length > 0 && !activeInstalled) {
       onModelChange(models[0].name, true);
     }
-  }, [activeInstalled, models, onModelChange]);
+  }, [activeInstalled, models, onModelChange, disabled]);
   const filteredModels = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -141,7 +156,7 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
 
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-              Local workspace
+              <span className="truncate">{projectName || "General workspace"}</span>
               <span className={`inline-block h-2 w-2 rounded-full ${healthUnavailable || health?.status === "degraded" ? "bg-rose-400" : health === null ? "bg-amber-400" : "bg-emerald-500"}`} />
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">
@@ -211,12 +226,12 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
                 {!llmOnline ? (
                   <div className="p-5 text-sm text-slate-600 dark:text-slate-300">
                     <AlertCircle size={18} className="mb-3 text-rose-500" />
-                    LLM provider is offline. Start LM Studio (or Ollama) and refresh.
+                    Model API is unavailable. Start Atomic Chat’s API, load a model, and refresh.
                   </div>
                 ) : models.length === 0 ? (
                   <div className="p-5 text-sm text-slate-600 dark:text-slate-300">
                     <AlertCircle size={18} className="mb-3 text-amber-500" />
-                    No models detected. Load a model in LM Studio (or <code className="rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-900">ollama pull</code>).
+                    No models detected. Load your model in Atomic Chat and refresh.
                   </div>
                 ) : (
                   <div className="max-h-80 overflow-y-auto p-1.5" role="listbox">
@@ -291,8 +306,8 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
             ) : null}
           </div>
 
-          <div
-            className={`hidden h-9 items-center gap-2 rounded-full border px-3 text-xs font-medium sm:flex ${
+          <button type="button" onClick={onOpenConnection} disabled={disabled} aria-label="Open connection assistant"
+            className={`flex h-9 shrink-0 items-center gap-2 rounded-full border px-2.5 text-xs font-medium transition hover:brightness-125 disabled:opacity-50 sm:px-3 ${
               health?.status === "ok"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200"
                 : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200"
@@ -300,8 +315,8 @@ export default function Header({ onToggleSidebar, model, thinkingEffort, onThink
             title={healthUnavailable ? "The backend health check failed" : health?.database_connected === false ? health.database_detail || "Database unavailable" : health?.ollama_reachable === false ? health.ollama_detail || "Model provider unavailable" : undefined}
           >
             <span className={`h-2 w-2 rounded-full ${healthUnavailable || health?.status === "degraded" ? "bg-rose-500" : health === null ? "bg-amber-400" : "bg-emerald-500"}`} />
-            {healthUnavailable ? "Backend offline" : health === null ? "Connecting" : health.database_connected === false ? "Database issue" : health.ollama_reachable === false ? "Model offline" : "Ready"}
-          </div>
+            <span className="hidden sm:inline">{healthUnavailable ? "Backend offline" : health === null ? "Connecting" : health.database_connected === false ? "Database issue" : health.ollama_reachable === false ? "Model offline" : "Ready"}</span>
+          </button>
 
         </div>
       </div>

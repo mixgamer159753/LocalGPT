@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   systemStyle: "balanced",
   webSearch: true,
   searchMode: "auto",
+  researchDepth: "standard",
   markdownRich: true,
 };
 
@@ -27,6 +28,7 @@ function loadSettings(): UserSettings {
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      researchDepth: parsed.researchDepth === "deep" ? "deep" : "standard",
       searchMode: ["auto", "always", "off"].includes(parsed.searchMode ?? "")
         ? parsed.searchMode!
         : parsed.webSearch === false ? "off" : "auto",

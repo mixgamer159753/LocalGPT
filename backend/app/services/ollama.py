@@ -124,6 +124,9 @@ class OllamaService:
         except (json.JSONDecodeError, requests.exceptions.JSONDecodeError) as exc:
             raise OllamaUnavailableError("The model server returned invalid JSON for the model list.") from exc
 
-        if LLM_USE_NATIVE_OLLAMA:
-            return data.get("models", [])
-        return data.get("data", [])
+        if not isinstance(data, dict):
+            raise OllamaUnavailableError("The model server returned an invalid model list.")
+        models = data.get("models" if LLM_USE_NATIVE_OLLAMA else "data")
+        if not isinstance(models, list) or any(not isinstance(item, dict) for item in models):
+            raise OllamaUnavailableError("The model server returned an invalid model list.")
+        return [item for item in models if isinstance((item.get("name") or item.get("model")) if LLM_USE_NATIVE_OLLAMA else item.get("id"), str)]

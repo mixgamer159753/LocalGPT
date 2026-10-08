@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Bot, Edit3, MessageSquare, Pin, PinOff, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
-import { Conversation } from "@/types/chat";
+import { Conversation, ProjectSpace } from "@/types/chat";
 
 interface Props {
   open: boolean;
@@ -15,6 +15,13 @@ interface Props {
   onRename: (id: number, title: string) => void;
   onTogglePin: (id: number) => void;
   onClose: () => void;
+  projects: ProjectSpace[];
+  projectId: number | null;
+  onProjectChange: (id: number | null) => void;
+  onCreateProject: () => void;
+  onManageProject: () => void;
+  projectError?: string;
+  disabled?: boolean;
 }
 
 function formatDate(dateStr: string) {
@@ -42,6 +49,7 @@ export default function Sidebar({
   onRename,
   onTogglePin,
   onClose,
+  projects, projectId, onProjectChange, onCreateProject, onManageProject, projectError, disabled,
 }: Props) {
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -115,6 +123,12 @@ export default function Sidebar({
           <Plus size={16} />
           New chat
         </button>
+        <div className="mt-4 flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-slate-500"><label htmlFor="project-space">Project space</label><button type="button" disabled={disabled} onClick={onCreateProject} aria-label="Create a project" className="rounded p-1 text-[#f0a087] hover:bg-[#e58e74]/10 disabled:opacity-40"><Plus size={15} /></button></div>
+        <select id="project-space" value={projectId ?? "general"} disabled={disabled} onChange={(event) => { setSearch(""); onProjectChange(event.target.value === "general" ? null : Number(event.target.value)); }} className="mt-1 h-10 w-full rounded-xl border border-[var(--border)] bg-[#1b2026] px-3 text-xs text-slate-200 outline-none focus:border-[#e58e74] disabled:opacity-50">
+          <option value="general">General workspace</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+        </select>
+        <button type="button" disabled={disabled} onClick={onManageProject} className="mt-2 text-xs text-slate-400 hover:text-[#f0a087] disabled:opacity-40">{projectId ? "Project details & memory" : "Manage memory & chats"}</button>
+        {projectError && <p role="status" className="mt-2 text-[11px] leading-5 text-[#f0a087]">{projectError}</p>}
       </div>
 
       <div className="border-b border-[var(--border)] p-3.5">

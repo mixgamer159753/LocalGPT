@@ -1,13 +1,13 @@
 "use client";
 
 import { ComponentPropsWithoutRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Check, Copy, ExternalLink, Link2Off, User } from "lucide-react";
+import { Bot, Brain, Check, Copy, Download, ExternalLink, Link2Off, User } from "lucide-react";
 import ReactMarkdown, { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { FileAttachment, Message } from "@/types/chat";
 import CodeBlock from "./CodeBlock";
 import ResearchPanel from "./ResearchPanel";
-import { citationPlugin, sourceDomain } from "@/lib/research";
+import { citationPlugin, downloadResearchReport, sourceDomain } from "@/lib/research";
 import { CodeProject, extractCodeProject } from "@/lib/code-workspace";
 import FileCard from "./FileCard";
 import FilePreviewDialog from "./FilePreviewDialog";
@@ -18,6 +18,7 @@ interface Props {
   index?: number;
   markdownRich?: boolean;
   onOpenWorkspace?: (project: CodeProject) => void;
+  onRemember?: (text: string) => void;
 }
 
 function MarkdownPre({ node, children, onWorkspace }: ComponentPropsWithoutRef<"pre"> & ExtraProps & { onWorkspace?: (code: string, language: string) => void }) {
@@ -58,7 +59,7 @@ function safeImageSrc(src: string | Blob | undefined) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : null;
 }
 
-export default function MessageBubble({ message, index = 0, markdownRich = true, onOpenWorkspace }: Props) {
+export default function MessageBubble({ message, index = 0, markdownRich = true, onOpenWorkspace, onRemember }: Props) {
   const isUser = message.role === "user";
   const isError = !isUser && (message.status === "error" || message.content.startsWith("Error:"));
   const isStopped = message.status === "stopped" || message.status === "incomplete";
@@ -247,7 +248,7 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
             }`}
           >
             {hasResearch && <ResearchPanel research={message.research} query={message.searchQuery}
-              active={message.status === "streaming" && !message.content} stopped={isStopped} />}
+              active={message.status === "streaming" && !message.content} stopped={isStopped || isError} stage={message.researchStage} statusText={message.statusText} depth={message.researchDepth} />}
             {!isUser && !!message.attachments?.length && <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400"><span>File context</span>{message.attachments.map((file) => <button key={file.id} type="button" onClick={() => setPreviewFile(file)} title={`Preview ${file.name}`} className="max-w-56 truncate rounded-md border border-[#e58e74]/20 bg-[#e58e74]/[0.06] px-2 py-1 text-[#f0a087] hover:border-[#e58e74]/60 focus-visible:outline-2 focus-visible:outline-[#e58e74]">{file.name}</button>)}</div>}
             {isUser ? (
               <div>
@@ -289,6 +290,8 @@ export default function MessageBubble({ message, index = 0, markdownRich = true,
           </div>
 
           <div className={`mt-1.5 flex items-center gap-2 px-1 ${isUser ? "justify-end" : ""}`}>
+            {message.content && message.status !== "streaming" && !isError && onRemember && <button type="button" onClick={() => onRemember(message.content)} className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-100" title="Review a note before saving it to this space’s memory"><Brain size={13} /> Remember</button>}
+            {message.content && message.status !== "streaming" && message.research?.depth === "deep" && <button type="button" onClick={() => downloadResearchReport(message.content, message.research!, message.errorMessage || (isStopped ? "Generation stopped before completion." : undefined))} className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-100"><Download size={13} /> Report</button>}
             {time ? <span className="text-xs text-slate-500">{time}</span> : null}
             {message.content ? (
               <button

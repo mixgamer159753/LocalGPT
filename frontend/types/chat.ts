@@ -25,6 +25,7 @@ export interface ApiChatMessage {
 }
 
 export type SearchMode = "auto" | "always" | "off";
+export type ResearchDepth = "standard" | "deep";
 
 export interface ResearchSource {
   id: number;
@@ -40,6 +41,8 @@ export interface ResearchInfo {
   cached: boolean;
   warning: string | null;
   sources: ResearchSource[];
+  depth?: ResearchDepth;
+  pages_read?: number;
 }
 
 export interface Message {
@@ -54,6 +57,8 @@ export interface Message {
   statusText?: string;
   searchPhase?: "search" | "answer";
   searchQuery?: string;
+  researchStage?: string;
+  researchDepth?: ResearchDepth;
   research?: ResearchInfo | null;
 }
 
@@ -61,6 +66,7 @@ export interface Conversation {
   id: number;
   title: string;
   model: string | null;
+  project_id: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -104,5 +110,34 @@ export interface UserSettings {
   systemStyle: "balanced" | "concise" | "detailed";
   webSearch: boolean;
   searchMode: SearchMode;
+  researchDepth: ResearchDepth;
   markdownRich: boolean;
+}
+
+export interface ProjectSpace {
+  id: number;
+  name: string;
+  description: string;
+  instructions: string;
+  memory_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+export type ProjectInput = Pick<ProjectSpace, "name" | "description" | "instructions" | "memory_enabled">;
+export interface SavedMemory { id: number; key: string; value: string; created_at: string }
+export interface ConnectionDiagnostics {
+  backend: string;
+  database_connected: boolean;
+  database_detail: string | null;
+  provider: string;
+  provider_reachable: boolean;
+  provider_detail: string | null;
+  chat_url: string;
+  models_url: string;
+  default_model: string;
+  models: string[];
+  frontend_origin_allowed: boolean;
+  search_enabled: boolean;
+  search_provider: string;
+  exa_configured: boolean;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, Globe2, LoaderCircle, Search, TriangleAlert } from "lucide-react";
-import { ResearchInfo } from "@/types/chat";
+import { ResearchInfo, ResearchDepth } from "@/types/chat";
 import { sourceDomain, sourceUrl } from "@/lib/research";
 import styles from "./ResearchPanel.module.css";
 
@@ -11,6 +11,9 @@ interface Props {
   query?: string;
   active: boolean;
   stopped: boolean;
+  stage?: string;
+  statusText?: string;
+  depth?: ResearchDepth;
 }
 
 function formatDate(value?: string | null) {
@@ -19,10 +22,11 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-export default function ResearchPanel({ research, query, active, stopped }: Props) {
+export default function ResearchPanel({ research, query, active, stopped, stage, statusText, depth }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const searching = active && !research;
+  const deep = (research?.depth ?? depth) === "deep";
 
   useEffect(() => {
     if (!searching) return;
@@ -32,7 +36,7 @@ export default function ResearchPanel({ research, query, active, stopped }: Prop
   }, [searching]);
 
   const sources = research?.sources ?? [];
-  const title = searching ? "Searching the web" : research?.warning ? "Search needs attention" :
+  const title = searching ? (deep ? "Deep research in progress" : "Searching the web") : research?.warning ? "Research has limitations" :
     sources.length ? `Found ${sources.length} sources` : stopped ? "Search stopped" : "Search unavailable";
   const Icon = searching ? LoaderCircle : research?.warning ? TriangleAlert : sources.length ? Globe2 : Search;
   const visibleQuery = research?.query || query;
@@ -43,6 +47,7 @@ export default function ResearchPanel({ research, query, active, stopped }: Prop
         <span className={styles.icon}><Icon size={15} className={searching ? "animate-spin motion-reduce:animate-none" : ""} aria-hidden="true" /></span>
         <div className={styles.title} role="status" aria-live="polite">{title}</div>
         {research?.cached && <span className={styles.badge}>From cache</span>}
+        {deep && <span className={styles.depthBadge}>Deep</span>}
         {sources.length > 0 && (
           <button type="button" className={styles.toggle} onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded} aria-label={expanded ? "Hide source details" : "Show source details"}>
@@ -54,11 +59,14 @@ export default function ResearchPanel({ research, query, active, stopped }: Prop
 
       {visibleQuery && <p className={styles.query} title={visibleQuery}>{visibleQuery}</p>}
 
+      {deep && research && <p className={styles.detail}>{sources.length} sources · {research.pages_read ?? 0} full pages read · Bounded source excerpts</p>}
+      {searching && statusText && <p className={styles.detail} role="status">{statusText}</p>}
       {searching && (
         <div className={styles.progress}>
-          <span className={styles.activeStep}><Search size={12} /> Find sources</span>
+          <span className={!stage || stage === "search" ? styles.activeStep : styles.finishedStep}><Search size={12} /> Find sources</span>
           <span className={styles.connector} />
-          <span>Write answer</span>
+          {deep && <><span className={stage === "read" ? styles.activeStep : stage === "synthesize" ? styles.finishedStep : ""}>Read pages</span><span className={styles.connector} /></>}
+          <span className={stage === "synthesize" ? styles.activeStep : ""}>{deep ? "Write report" : "Write answer"}</span>
           {elapsed >= 6 && <span className={styles.elapsed}>{elapsed}s</span>}
         </div>
       )}
@@ -88,7 +96,7 @@ export default function ResearchPanel({ research, query, active, stopped }: Prop
       )}
 
       {research?.warning && <p className={styles.warning}>{research.warning} The answer will flag anything it could not verify.</p>}
-      {active && research && !research.warning && <div className={styles.ready} role="status"><Check size={12} /> Sources ready <span>· Preparing your answer</span></div>}
+      {active && research && <div className={styles.ready} role="status"><Check size={12} /> Sources ready <span>· {deep ? "Writing your report" : "Preparing your answer"}</span></div>}
     </section>
   );
 }

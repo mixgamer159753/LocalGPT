@@ -32,7 +32,19 @@ export function parseResearchInfo(value: unknown): ResearchInfo {
       published_date: typeof source.published_date === "string" ? source.published_date : null });
   }
   return { query: data.query, provider: data.provider, cached: data.cached === true,
+    depth: data.depth === "deep" ? "deep" : "standard", pages_read: typeof data.pages_read === "number" ? data.pages_read : 0,
     warning: typeof data.warning === "string" ? data.warning : null, sources };
+}
+
+export function downloadResearchReport(content: string, research: ResearchInfo, warning?: string) {
+  const references = research.sources.map((source) => `[${source.id}]: ${source.url}`).join("\n");
+  const sources = research.sources.map((source) => `${source.id}. [${source.title.replace(/[\[\]]/g, "")}](<${source.url}>)${source.published_date ? ` — ${source.published_date}` : ""}`).join("\n");
+  const report = `# Research report\n\n**Question:** ${research.query}\n\n${warning ? `**Incomplete report:** ${warning}\n\n` : ""}${research.warning ? `**Source limitation:** ${research.warning}\n\n` : ""}${content}\n\n## Sources\n\n${sources}\n\n${references}\n\n---\nExported ${new Date().toISOString()} · ${research.provider} · ${research.pages_read ?? 0} full pages read\n`;
+  const url = URL.createObjectURL(new Blob([report], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a"); link.href = url;
+  link.download = `${research.query.replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 64) || "research"}-report.md`;
+  document.body.appendChild(link); link.click(); link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 interface CitationNode {

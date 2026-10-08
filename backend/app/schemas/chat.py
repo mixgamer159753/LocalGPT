@@ -55,6 +55,8 @@ class ChatRequest(BaseModel):
     response_style: Literal["balanced", "concise", "detailed"] = "balanced"
     web_search_enabled: bool = True
     web_search_mode: Literal["auto", "always", "off"] = "auto"
+    research_depth: Literal["standard", "deep"] = "standard"
+    project_id: Optional[int] = Field(default=None, gt=0)
     conversation_id: Optional[int] = None
     persist_user_message: bool = True
 
@@ -82,6 +84,8 @@ class ResearchOut(BaseModel):
     query: str
     provider: str
     cached: bool = False
+    depth: Literal["standard", "deep"] = "standard"
+    pages_read: int = 0
     warning: Optional[str] = None
     sources: list[ResearchSourceOut] = Field(default_factory=list)
 
@@ -126,6 +130,7 @@ class ConversationOut(BaseModel):
     id: int
     title: str
     model: Optional[str] = None
+    project_id: Optional[int] = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -136,6 +141,7 @@ class ConversationDetailOut(ConversationOut):
 
 class ConversationCreate(BaseModel):
     title: Optional[str] = "New Chat"
+    project_id: Optional[int] = Field(default=None, gt=0)
     model: Optional[str] = Field(
         default=None,
         max_length=120,
@@ -144,7 +150,29 @@ class ConversationCreate(BaseModel):
 
 
 class ConversationUpdate(BaseModel):
-    title: str = Field(min_length=1, max_length=255)
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    project_id: Optional[int] = Field(default=None, gt=0)
+
+
+class ProjectInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
+    description: str = Field(default="", max_length=500)
+    instructions: str = Field(default="", max_length=4000)
+    memory_enabled: bool = True
+
+
+class ProjectOut(ProjectInput):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+
+class MemoryInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    key: str = Field(min_length=1, max_length=80)
+    value: str = Field(min_length=1, max_length=2000)
 
 
 class ModelInfo(BaseModel):

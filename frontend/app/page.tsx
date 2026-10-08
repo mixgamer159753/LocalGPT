@@ -10,11 +10,16 @@ import { useChat } from "@/hooks/useChat";
 import { useSettings } from "@/hooks/useSettings";
 import { ThinkingEffort } from "@/types/chat";
 import { useCodeWorkspace } from "@/hooks/useCodeWorkspace";
+import { useProjects } from "@/hooks/useProjects";
+import { CONNECTION_KEY } from "@/lib/api";
 
 const CodeWorkspace = dynamic(() => import("@/components/CodeWorkspace"), { ssr: false });
+const ProjectDialog = dynamic(() => import("@/components/ProjectDialog"), { ssr: false });
+const ConnectionDialog = dynamic(() => import("@/components/ConnectionDialog"), { ssr: false });
 
 export default function Home() {
   const { settings, setSettings } = useSettings();
+  const spaces = useProjects();
   const {
     messages,
     sendMessage,
@@ -30,11 +35,28 @@ export default function Home() {
     openConversation,
     removeConversation,
     renameConversation,
-  } = useChat(settings);
+    refreshConversations,
+    clearHistory,
+  } = useChat(settings, spaces.projectId);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [composerSession, setComposerSession] = useState(0);
   const workspace = useCodeWorkspace();
+  const [projectDialog, setProjectDialog] = useState<{ creating: boolean; memoryDraft?: string } | null>(null);
+  const [connectionOpen, setConnectionOpen] = useState(false);
+
+  function resetChat() {
+    setComposerSession((value) => value + 1);
+    workspace.closeWorkspace();
+    newChat();
+  }
+
+  useEffect(() => {
+    // A different tab changing servers must not leave old chat IDs active here.
+    const handler = (event: StorageEvent) => { if (event.key === CONNECTION_KEY) window.location.reload(); };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -65,7 +87,11 @@ export default function Home() {
           newChat();
           setSidebarOpen(false);
         }}
-        conversations={conversations}
+        conversations={conversations.filter((conversation) => (conversation.project_id ?? null) === spaces.projectId)}
+        projects={spaces.projects} projectId={spaces.projectId} projectError={spaces.error} disabled={loading}
+        onProjectChange={(id) => { spaces.setProjectId(id); resetChat(); }}
+        onCreateProject={() => setProjectDialog({ creating: true })}
+        onManageProject={() => setProjectDialog({ creating: false })}
         activeId={conversationId}
         pinnedIds={pinnedIds}
         onSelect={(id) => {
@@ -81,6 +107,8 @@ export default function Home() {
 
       <section className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <Header
+          projectName={spaces.project?.name}
+          onOpenConnection={() => setConnectionOpen(true)}
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           model={model}
           thinkingEffort={settings.thinkingEffort}
@@ -108,6 +136,7 @@ export default function Home() {
           markdownRich={settings.markdownRich}
           onSend={sendMessage}
           onOpenWorkspace={workspace.openWorkspace}
+          onRemember={(memoryDraft) => setProjectDialog({ creating: false, memoryDraft })}
         />
 
         <ChatInput
@@ -116,7 +145,9 @@ export default function Home() {
           onStop={stopGeneration}
           disabled={loading}
           searchMode={settings.searchMode}
-          onSearchModeChange={(searchMode) => setSettings({ ...settings, searchMode, webSearch: searchMode !== "off" })}
+          onSearchModeChange={(searchMode) => setSettings({ ...settings, searchMode, webSearch: searchMode !== "off", researchDepth: searchMode === "off" || searchMode === "auto" ? "standard" : settings.researchDepth })}
+          researchDepth={settings.researchDepth}
+          onResearchDepthChange={(researchDepth) => setSettings({ ...settings, researchDepth, searchMode: researchDepth === "deep" ? "always" : settings.searchMode, webSearch: true })}
         />
       </section>
 
@@ -124,6 +155,15 @@ export default function Home() {
         project={workspace.session} originalFiles={workspace.session.originalFiles} saveState={workspace.saveState}
         onClose={workspace.closeWorkspace} onSelectFile={workspace.selectFile}
         onUpdateFile={workspace.updateFile} onReset={workspace.resetFiles} />}
+
+      {projectDialog && <ProjectDialog key={`${spaces.projectId ?? "general"}-${projectDialog.creating}-${projectDialog.memoryDraft ? "memory" : "details"}`}
+        project={spaces.project} creating={projectDialog.creating} memoryDraft={projectDialog.memoryDraft}
+        conversations={conversations} activeConversationId={conversationId} onClose={() => setProjectDialog(null)}
+        onSaved={async (project) => { await spaces.refresh(); if (projectDialog.creating) { spaces.setProjectId(project.id); resetChat(); } }}
+        onDeleted={async () => { spaces.setProjectId(null); resetChat(); await Promise.all([spaces.refresh(), refreshConversations()]); }}
+        onMoved={async () => { resetChat(); await refreshConversations(); }} />}
+      {connectionOpen && <ConnectionDialog model={model} onModelChange={setModel} onClose={() => setConnectionOpen(false)}
+        onConnectionApplied={(changed) => { if (changed) { spaces.setProjectId(null); setModel(""); resetChat(); clearHistory(); } void spaces.refresh(changed); void refreshConversations(); }} />}
 
     </main>
   );

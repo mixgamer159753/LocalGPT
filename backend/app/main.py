@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.chat import router as chat_router
 from app.api.files import router as files_router
+from app.api.projects import router as projects_router
 from app.core.config import CORS_ORIGINS, DEBUG
 from app.database.database import init_db
 from app.services.ollama import OllamaUnavailableError
@@ -51,6 +52,7 @@ async def ollama_unavailable_handler(request: Request, exc: OllamaUnavailableErr
 
 app.include_router(chat_router)
 app.include_router(files_router)
+app.include_router(projects_router)
 
 
 @app.get("/")

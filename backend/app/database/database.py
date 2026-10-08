@@ -45,6 +45,9 @@ async def init_db() -> None:
         for name, sql_type in (("research", "JSON"), ("attachments", "JSON"), ("generation_warning", "TEXT")):
             if name not in existing:
                 await conn.execute(text(f"ALTER TABLE messages ADD COLUMN {name} {sql_type}"))
+        columns = await conn.run_sync(lambda connection: inspect(connection).get_columns("conversations"))
+        if "project_id" not in {column["name"] for column in columns}:
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL"))
 
     # Clean up empty conversations (from previous crashes)
     from sqlalchemy import func, select

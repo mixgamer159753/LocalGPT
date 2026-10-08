@@ -16,6 +16,10 @@ Built with **Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · FastAPI �
 - **Code panels:** syntax highlighting, line numbers, copy, download, line wrapping, and an expanded view.
 - **Coding workspace:** editable project files, a live web preview, desktop/mobile views, local drafts, and ZIP downloads.
 - **Web research:** Auto / Search / Off control, live progress, expandable source cards, and clickable citations saved with each answer.
+- **Deep research:** deeper Exa retrieval, fuller source reading, visible research stages, and downloadable Markdown reports with citations.
+- **Project spaces:** group chats by project, set reusable instructions, and move existing conversations between spaces.
+- **Useful memory:** explicitly save, review, edit, pause, or forget facts; each project has its own context.
+- **Connection assistant:** click the status badge to diagnose FastAPI, the database, Atomic Chat, loaded models, and search configuration. Change the backend address without rebuilding the frontend.
 - **Image attachments:** send images to providers and models that support vision.
 - **Chat with files:** attach PDFs, Word documents, text, CSVs, and source code; preview extracted text and ask follow-up questions in a saved chat.
 - **Responsive design:** a charcoal interface with coral accents for desktop and mobile.
@@ -201,6 +205,30 @@ The backend reads the provider's finish reason. A reported token-limit stop (`le
 
 The frontend's five-minute timer now measures **connection inactivity**, rather than total generation time. The backend sends keepalive events during research and private reasoning. Stream failures preserve the text already received and show a separate error instead of replacing the answer. Token-limit warnings are retained with saved replies. Older hidden browser token limits are migrated to the current 16,384-token default.
 
+## Project spaces and memory
+
+Use **Project space** in the sidebar to switch between **General workspace** and your projects. The **+** creates a project with a name, description, and instructions. New chats belong to the selected space; its conversation list shows only that space's chats.
+
+Open **Project details & memory** to update instructions, pause memory use, or manage saved facts. General has **Manage memory & chats** for its own facts. A **Remember** action beside a finished message opens an editable note: review it, give it a useful label, and click **Save memory**. The app does not automatically infer or save personal facts.
+
+- Each space keeps up to **30 memories**. New labels allow **80 characters**, values **2,000**, and project instructions **4,000**. Saving the same label updates that fact. **Forget** removes it.
+- Project chats use only that project's instructions and memories. General uses its own memories. Memory is not shared across projects. Pausing project memory preserves saved facts and leaves project instructions active.
+- Answers receive up to **6,000 characters** of saved facts, ordered by label. Instructions and descriptions are supplied separately. Current corrections in the conversation take precedence over older saved facts.
+- **Organize chats** moves a conversation from another space into the open space. Its future answers use the destination's context; existing replies stay unchanged. Removing a project deletes its instructions and memories and moves its chats to General.
+- Files remain attached to individual conversations; this feature does not automatically make every file or message in a project available to every other chat.
+
+Projects and memories live in the backend database. Restart the updated backend to add the new tables and the optional conversation `project_id` column; existing chat history is preserved.
+
+## Connection assistant
+
+Click the **Ready / Backend offline / Model offline** badge in the header (the status dot on small screens). **Check connection** reads diagnostics without generating an answer or spending Exa search credits.
+
+The checklist shows browser-to-FastAPI access, database status, the model API URL, loaded model IDs, frontend origin configuration, and whether the search key is configured. It cannot verify an Exa key's validity or remaining credits without making a search request. Model names hide the publisher in the display and retain the full API ID for requests.
+
+Enter the FastAPI origin, click **Check connection**, then **Use this address**. The override is stored in this browser and used by chat streams, files, projects, and history. Changing servers starts a fresh chat and reloads history from the chosen server. **Reset default** restores the build's `NEXT_PUBLIC_API_URL` or the hostname/port fallback. The connection assistant changes the browser's target; provider URLs and keys still belong in `backend/.env` and require a backend restart.
+
+An HTTPS frontend needs an HTTPS backend tunnel. Keep FastAPI and the tunnel running, and allow the frontend's exact origin in `CORS_ORIGINS`. If browser requests are blocked by CORS or the tunnel, the assistant shows corrective steps; it cannot bypass those browser restrictions. **Copy diagnostics** includes addresses and model IDs but no API keys.
+
 ## Configuration
 
 Start with [backend/.env.example](backend/.env.example) and [frontend/.env.local.example](frontend/.env.local.example). Real environment files are ignored by Git.
@@ -235,11 +263,12 @@ The example file uses smaller research limits than the application defaults. You
 | --- | --- | --- |
 | `DEFAULT_MAX_TOKENS` | `1536` | Output budget when a request omits `max_tokens` |
 | `WEB_SEARCH_CACHE_TTL` | `900` | Research cache lifetime in seconds |
-| `WEB_SEARCH_DEEP` | `true` | Generate related queries for legacy search; Exa uses one query |
+| `WEB_SEARCH_DEEP` | `true` | Generate related queries for legacy search; the frontend's Deep research switch is separate |
 | `WEB_SEARCH_MAX_RESULTS` | `12` | Search result limit; example file sets `6` |
 | `WEB_SEARCH_MAX_PAGES` | `6` | Sources supplied to the model; example file sets `3` |
 | `WEB_SEARCH_DEEP_QUERIES` | `3` | Related query limit |
-| `WEB_SEARCH_CONTEXT_CHARS` | `1800` | Maximum extract characters per source supplied to the model |
+| `WEB_SEARCH_CONTEXT_CHARS` | `1800` | Standard research extract characters per source; Deep uses larger excerpts, normally 3,000 per source, within an 18,000-character total budget |
+| `WEB_SEARCH_PAGE_TEXT_LIMIT` | `15000` | Full-page text retained per source during Deep research before prompt excerpts are selected |
 
 The frontend requests up to `16384` output tokens by default. Atomic Chat and model limits still apply. Configure model loading, context size, and hardware options in Atomic Chat. The backend's legacy native Ollama options are not sent in Atomic Chat mode.
 
@@ -259,7 +288,7 @@ EXA_API_KEY=your-exa-api-key
 
 Replace the placeholder locally with your key, or provide `EXA_API_KEY` through the backend process environment. Process environment variables take precedence over `.env`. Restart FastAPI after changing them. Keep the key out of frontend variables, Git, and chat messages.
 
-The backend calls `POST https://api.exa.ai/search` with `contents.highlights=true`, then passes source titles, URLs, publication dates, and extracts to Atomic Chat. Atomic Chat still generates the answer using your selected local model.
+Standard research calls `POST https://api.exa.ai/search` with `type=auto` and `contents.highlights=true`, then passes source titles, URLs, publication dates, and extracts to Atomic Chat. Atomic Chat generates the answer using your selected local model. Request shapes follow [Exa's search reference](https://exa.ai/docs/reference/search).
 
 Use the **Web** control below the composer:
 
@@ -275,7 +304,21 @@ Search progress appears before retrieval begins. Source chips open the original 
 
 Short follow-up questions can include the previous user topic in the search query. Search providers receive those query details, but not the complete conversation or generated answers.
 
-Successful results are cached for `WEB_SEARCH_CACHE_TTL` seconds. Source limits are applied locally. Exa mode does not fan out related queries or fetch source pages again. A missing key, API failure, or empty result produces a cautious-answer instruction; it does not silently switch providers. Failed searches are not cached, so the next request can recover.
+Successful results are cached separately by provider, query, and research depth for `WEB_SEARCH_CACHE_TTL` seconds, with up to 128 cached entries. Source limits are applied locally. Standard Exa mode uses one search request. A missing key, API failure, or empty result produces a cautious-answer instruction; it does not silently switch providers. Failed searches are not cached, so the next request can recover.
+
+### Deep research reports
+
+Enable **Deep research** beside the Web selector, then ask a research question. This selects **Search** mode. Turning Web **Off** or back to **Auto** resets Deep research. The browser remembers this preference for future messages.
+
+1. Exa runs a deeper retrieval pass with `type=deep` and source highlights.
+2. The backend reads the selected URLs with `POST /contents` and top-level `text=true`, following [Exa's contents reference](https://exa.ai/docs/reference/get-contents). This is a second API request and uses additional Exa credits. Existing source-count limits still apply.
+3. Atomic Chat writes a report with a short summary, grouped findings, source agreements and conflicts, limitations, and next steps when appropriate. Retrieved excerpts remain bounded for the local model; this is not an exhaustive review of every page.
+
+The source panel shows **Find sources → Read pages → Write report**, then the number of sources and full pages successfully read. If page extraction fails or only some pages are available, search excerpts are retained and the report displays a limitation. With a legacy search provider, Deep research explicitly falls back to snippets and explains that fuller reading requires Exa.
+
+Click **Report** beside the finished reply to download Markdown with the question, answer, source links, retrieval limitations, and export date. Incomplete responses are marked in the exported report. Source metadata and research depth are saved with the chat, so reports can also be downloaded after reopening it.
+
+Deep research keeps generation on Atomic Chat; it does not call Exa's answer or Agent API. Your question and selected public source URLs reach Exa. File text, project instructions, and saved memories are not included in Exa requests. Attached-file questions can still use Deep research when you explicitly choose it.
 
 ### Frontend — `frontend/.env.local`
 
@@ -292,6 +335,8 @@ NEXT_PUBLIC_API_URL=http://192.168.1.20:8000
 ```
 
 Use the backend origin only: **no `/api`, no `/v1`, and no model-server port**. Restart the frontend after editing local values. Public environment variables are included in browser code.
+
+The connection assistant's browser override takes precedence over these frontend variables. Reset it in the assistant to use the configured default again.
 
 ## Deployment
 
@@ -329,7 +374,7 @@ Vercel hosts the frontend. Your computer continues to run FastAPI and the model 
 
 5. Deploy or redeploy the frontend. [Vercel environment changes apply to new deployments](https://vercel.com/docs/environment-variables), so saving the variable alone does not update an existing build.
 
-Keep the backend, model server, and tunnel running while using the hosted app. If the tunnel address changes, update `NEXT_PUBLIC_API_URL` and redeploy. Never use `127.0.0.1:1337` as the hosted frontend's backend URL.
+Keep the backend, model server, and tunnel running while using the hosted app. If the tunnel address changes, use the connection assistant to update this browser immediately, or update `NEXT_PUBLIC_API_URL` and redeploy to change the default for all browsers. Never use `127.0.0.1:1337` as the hosted frontend's backend URL.
 
 The API currently has no authentication. A public tunnel exposes conversation and memory endpoints; protect access before sharing the backend publicly. CORS controls browser origins and does not authenticate callers.
 
@@ -360,8 +405,8 @@ If needed, change `BACKEND_PORT` to `8001` and `NEXT_PUBLIC_BACKEND_PORT` to `80
 
 ## Data and privacy
 
-- Starting the backend from `backend/` stores chats, memories, and extracted file text in `backend/localgpt.db` by default.
-- Selected models, pinned conversation IDs, and frontend preferences are stored in the browser's local storage.
+- Starting the backend from `backend/` stores chats, projects, memories, and extracted file text in `backend/localgpt.db` by default.
+- Selected models, pinned conversation IDs, frontend preferences, and the backend address override are stored in the browser's local storage.
 - The database, environment files, installed dependencies, and generated caches are excluded from Git.
 - Model inference stays on your computer when you use a local provider. Optional web research sends search queries to external providers. Exa returns extracted source content; the API key remains on the backend.
 - Generation uses a short recent message history; older saved messages remain available in the conversation view.
@@ -374,7 +419,7 @@ If needed, change `BACKEND_PORT` to `8001` and `NEXT_PUBLIC_BACKEND_PORT` to `80
 LocalGPT/
 ├── backend/
 │   ├── app/
-│   │   ├── api/           Health, models, conversations, memories, chat, and files
+│   │   ├── api/           Health, diagnostics, models, conversations, projects, memories, chat, and files
 │   │   ├── core/          Environment configuration
 │   │   ├── database/      SQLite connection and SQLAlchemy models
 │   │   ├── schemas/       Request and response validation
@@ -423,9 +468,14 @@ Interactive documentation is available at **[FastAPI docs](http://127.0.0.1:8000
 | Method | Route | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Provider reachability and database status |
+| `GET` | `/api/diagnostics` | Connection configuration and loaded models, without secrets |
 | `GET` | `/api/models` | Available provider models |
 | `GET`, `POST` | `/api/conversations` | List or create conversations |
-| `GET`, `PATCH`, `DELETE` | `/api/conversations/{id}` | Read, rename, or delete a conversation |
+| `GET`, `PATCH`, `DELETE` | `/api/conversations/{id}` | Read, rename, move between projects, or delete a conversation |
+| `GET`, `POST` | `/api/projects` | List or create project spaces |
+| `PUT`, `DELETE` | `/api/projects/{id}` | Update a project or remove it while preserving chats in General |
+| `GET`, `POST` | `/api/projects/{id}/memories` | List or upsert project memory by label |
+| `DELETE` | `/api/projects/{id}/memories/{memory_id}` | Forget a project memory |
 | `GET`, `POST` | `/api/memories` | List or save user memories |
 | `DELETE` | `/api/memories/{id}` | Remove a memory |
 | `POST` | `/api/chat` | Generate and save a complete response |
@@ -434,4 +484,4 @@ Interactive documentation is available at **[FastAPI docs](http://127.0.0.1:8000
 | `GET` | `/api/files/{id}` | Preview extracted file text |
 | `DELETE` | `/api/files/{id}` | Remove an unused uploaded draft |
 
-Streaming events use `status` for progress (with optional `phase` and `query`), `research` for web source metadata, `files` for file context metadata, `ping` for keepalive, `token` for generated text, `error` for failures, and `done` for completed processing. `done` includes the provider's `finish_reason` and an optional incomplete-answer `warning`. Chat messages accept an `attachments` array of up to four uploaded document IDs. Saved messages return attachment metadata and optional `generation_warning`. `web_search_mode` accepts `auto`, `always`, or `off`; `web_search_enabled=false` also disables web retrieval. Keep backend and frontend changes together when editing this protocol.
+Streaming events use `status` for progress (with optional `phase`, `query`, `stage`, and `depth`), `research` for web source metadata including `depth` and `pages_read`, `files` for file context metadata, `ping` for keepalive, `token` for generated text, `error` for failures, and `done` for completed processing. `done` includes the provider's `finish_reason` and an optional incomplete-answer `warning`. Chat messages accept an `attachments` array of up to four uploaded document IDs. Saved messages return attachment metadata and optional `generation_warning`. `web_search_mode` accepts `auto`, `always`, or `off`; `web_search_enabled=false` also disables web retrieval. `research_depth` accepts `standard` or `deep`; `project_id` selects the project for a new chat. Existing chats use their persisted project. PATCH a conversation with `project_id: null` to move it to General. Keep backend and frontend changes together when editing this protocol.

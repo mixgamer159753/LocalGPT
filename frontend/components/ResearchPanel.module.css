@@ -13,12 +13,15 @@
 .icon { display: flex; color: #f0a087; }
 .title { color: #ebe8e3; font-size: 12px; font-weight: 600; }
 .badge { margin-left: auto; color: #8c97a7; font-size: 10px; }
+.depthBadge { color: #f0a087; font-size: 10px; border: 1px solid #e58e7440; padding: 2px 6px; border-radius: 5px; }
+.detail { margin-top: 9px; font-size: 11px; color: #a6b1c1; line-height: 1.6; }
+.finishedStep { color: #a7beaf; }
 .toggle { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 6px; color: #a8b3c2; cursor: pointer; }
 .toggle:hover { background: #2b323c; color: #f4b59f; }
 .toggle svg { transition: transform .18s ease; }
 .rotated { transform: rotate(180deg); }
 .query { margin: 8px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #909bac; font-size: 11px; }
-.progress { display: flex; align-items: center; gap: 9px; margin-top: 15px; color: #697587; font-size: 11px; }
+.progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 15px; color: #8692a3; font-size: 11px; }
 .activeStep { display: flex; align-items: center; gap: 5px; color: #f0a087; }
 .connector { width: 24px; height: 1px; background: #3a424e; }
 .elapsed { margin-left: auto; color: #8c97a7; font-variant-numeric: tabular-nums; }

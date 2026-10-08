@@ -7,6 +7,7 @@ import {
   fetchConversation,
   updateConversationTitle as apiUpdateConversationTitle,
   deleteConversation as apiDeleteConversation,
+  getApiBaseUrl,
 } from "@/lib/api";
 
 const WELCOME_ID = -1;
@@ -42,6 +43,7 @@ export function useConversations() {
   }]);
   const mountedRef = useRef(true);
   const openRequestRef = useRef(0);
+  const listRequestRef = useRef(0);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -50,9 +52,11 @@ export function useConversations() {
   }, []);
 
   const refreshConversations = useCallback(async () => {
+    const requestId = ++listRequestRef.current;
+    const target = getApiBaseUrl();
     try {
       const list = await fetchConversations();
-      if (mountedRef.current) setConversations(list);
+      if (mountedRef.current && requestId === listRequestRef.current && target === getApiBaseUrl()) setConversations(list);
     } catch {
       // Keep the last successful list visible during a temporary API outage.
     }
@@ -126,6 +130,12 @@ export function useConversations() {
     setConversationId(null);
   }, []);
 
+  const clearHistory = useCallback(() => {
+    listRequestRef.current++;
+    setConversations([]);
+    newChat();
+  }, [newChat]);
+
   return {
     conversations,
     conversationId,
@@ -139,5 +149,6 @@ export function useConversations() {
     removeConversation,
     renameConversation,
     newChat,
+    clearHistory,
   };
 }
